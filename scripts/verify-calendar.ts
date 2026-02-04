@@ -67,6 +67,12 @@ async function main() {
     // 5. Verify Empty Date
     const emptyDateStr = "2024-10-11";
     const result2 = await getDailyBookingsAction(testSlug, emptyDateStr);
+
+    if (!result2.bookings) {
+        console.error("❌ Action returned error for empty date");
+        process.exit(1);
+    }
+
     if (result2.bookings.length === 0) {
         console.log("✅ Empty date returns 0 bookings.");
     } else {

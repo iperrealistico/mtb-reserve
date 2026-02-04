@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "@/lib/db";
 import { getBikeAvailability, AvailabilityResult } from "@/lib/availability";
 import { bookingSchema } from "@/lib/schemas";

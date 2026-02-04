@@ -25,11 +25,7 @@ export const DEFAULT_SLOTS: TenantSlot[] = [
 export const getTenantBySlug = cache(async (slug: string) => {
     return db.tenant.findUnique({
         where: { slug },
-        // include: { bikeTypes: true }, // optimization: specific calls might need this, or we lazily fetch. 
-        // Original had it, so let's keep it to avoid breaking other pages?
-        // Actually, if I look at page.tsx it just displays name. 
-        // But `actions.ts` calls it.
-        // Let's keep it safe.
+        include: { bikeTypes: true },
     });
 });
 
