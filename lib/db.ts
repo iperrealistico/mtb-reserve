@@ -10,7 +10,10 @@ const globalForPrisma = globalThis as unknown as {
 
 const pool = new Pool({
   connectionString,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+  ssl: { rejectUnauthorized: false }
 });
 const adapter = new PrismaPg(pool);
 
