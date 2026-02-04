@@ -11,8 +11,10 @@ export function middleware(request: NextRequest) {
         default-src 'self';
         script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
         style-src 'self' 'unsafe-inline';
-        img-src 'self' blob: data:;
+        img-src 'self' blob: data: https://www.google.com https://www.gstatic.com;
         font-src 'self';
+        frame-src 'self' https://www.google.com https://www.gstatic.com;
+        connect-src 'self' https://www.google.com https://www.gstatic.com;
         object-src 'none';
         base-uri 'self';
         form-action 'self';
