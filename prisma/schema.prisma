@@ -7,6 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
+
 model Tenant {
   slug                String   @id
   name                String
@@ -17,7 +18,12 @@ model Tenant {
   timezone            String   @default("Europe/Rome")
   
   // Settings stored as JSON: slots, fullDayEnabled, buffer, etc.
+  // Also includes: content (titles, emails), infoBox
   settings            Json? 
+
+  // Password Recovery
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
 
   bikeTypes           BikeType[]
   bookings            Booking[]
@@ -70,6 +76,9 @@ model Booking {
   // Confirmation logic
   confirmationToken String?       @unique
   expiresAt         DateTime?     // When pending confirmation expires
+  
+  // Use tosAcceptedAt to track acceptance time, existence implies true
+  tosAcceptedAt     DateTime?
 
   tenant            Tenant        @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
   bikeType          BikeType      @relation(fields: [bikeTypeId], references: [id], onDelete: Cascade)
@@ -81,3 +90,64 @@ model Booking {
   @@index([status])
   @@index([confirmationToken])
 }
+
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AdminLoginAttempt {
+  id        String   @id @default(cuid())
+  ipAddress String
+  email     String
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  @@index([ipAddress])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model RateLimit {
+  key       String   @id // identifier e.g. "login:127.0.0.1"
+  count     Int      @default(0)
+  expiresAt DateTime
+}
+
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+}
+
+enum ActorType {
+  GUEST
+  TENANT_ADMIN
+  SUPER_ADMIN
+  SYSTEM
+}
+
+model EventLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  level       LogLevel
+  tenantId    String?
+  actorType   ActorType
+  actorId     String?
+  eventType   String
+  entityType  String?
+  entityId    String?
+  ipHash      String?
+  userAgent   String?
+  message     String
+  metadata    Json?
+
+  @@index([tenantId, createdAt])
+  @@index([level, createdAt])
+  @@index([eventType, createdAt])
+}
+

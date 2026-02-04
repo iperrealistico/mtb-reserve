@@ -15,6 +15,16 @@ export interface TenantSettings {
     fullDayEnabled?: boolean;
     blockedDates?: string[]; // ISO Date Strings "YYYY-MM-DD"
     minAdvanceHours?: number; // Minimum hours before booking starts
+
+    // Content Customization
+    content?: {
+        bookingTitle?: string;
+        bookingSubtitle?: string;
+        emailSubjectConfirmation?: string;
+        emailSubjectRecap?: string;
+        // ... extend as needed
+        infoBox?: string; // Markdown or text
+    };
 }
 
 // Default Slots if none configured
@@ -41,4 +51,28 @@ export function getTenantSettings(tenant: { settings: any }): TenantSettings {
         blockedDates: s.blockedDates || [],
         minAdvanceHours: s.minAdvanceHours || 0,
     };
+}
+
+export function getComputedSlots(tenant: any): TenantSlot[] {
+    const settings = getTenantSettings(tenant);
+    const slots = [...(settings.slots || [])];
+
+    if (settings.fullDayEnabled && slots.length > 0) {
+        let minStart = slots[0].start;
+        let maxEnd = slots[0].end;
+
+        for (const s of slots) {
+            if (s.start < minStart) minStart = s.start;
+            if (s.end > maxEnd) maxEnd = s.end;
+        }
+
+        slots.push({
+            id: "full-day",
+            label: `Full Day (${minStart} - ${maxEnd})`,
+            start: minStart,
+            end: maxEnd
+        });
+    }
+
+    return slots;
 }

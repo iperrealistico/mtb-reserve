@@ -2,10 +2,13 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { ensureAuthenticated } from "@/lib/auth";
 
 export async function cancelBookingAction(formData: FormData) {
     const bookingId = formData.get("bookingId") as string;
     const slug = formData.get("slug") as string;
+
+    await ensureAuthenticated(slug);
 
     if (!bookingId || !slug) return;
 

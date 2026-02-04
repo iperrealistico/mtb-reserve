@@ -15,7 +15,11 @@ export default async function AdminProtectedLayout({
 
     // 1. Verify Session
     const session = await getSession();
-    if (!session.isLoggedIn || session.tenantSlug !== slug) {
+    if (!session.isLoggedIn) {
+        redirect(`/${slug}/admin/login`);
+    }
+
+    if (!session.isSuperAdmin && session.tenantSlug !== slug) {
         redirect(`/${slug}/admin/login`);
     }
 

@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale"; // Assuming IT locale for MVP as requested, or EN
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { CalendarDays } from "lucide-react";
 
 interface CalendarViewProps {
     slug: string;
@@ -49,7 +50,8 @@ export default function BookingCalendarView({ slug, initialDate, bookings, timez
             <div className="flex-1">
                 <div className="bg-white p-6 rounded-lg shadow border border-gray-200 min-h-[500px]">
                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        📅 Bookings for {date ? format(date, "d MMMM yyyy") : "..."}
+                        <CalendarDays className="w-6 h-6" />
+                        Bookings for {date ? format(date, "d MMMM yyyy") : "..."}
                     </h2>
 
                     {bookings.length === 0 ? (

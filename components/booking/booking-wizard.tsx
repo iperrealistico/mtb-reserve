@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import ReCAPTCHA from "react-google-recaptcha";
 import { format } from "date-fns";
 import { Loader2, Info } from "lucide-react";
 import { Tenant, BikeType } from "@prisma/client";
@@ -48,6 +49,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
     const [selectedSlotId, setSelectedSlotId] = useState<string>("");
     const [selectedBikeTypeId, setSelectedBikeTypeId] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
     // Form Hook
     const { register, handleSubmit, formState: { errors }, watch } = useForm<FormValues>({
@@ -89,6 +91,10 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
 
     const onSubmit = async (data: FormValues) => {
         if (!date || !selectedSlotId || !selectedBikeTypeId) return;
+        if (!captchaToken) {
+            toast.error("Please complete the security check");
+            return;
+        }
 
         setIsSubmitting(true);
         const formData = new FormData();
@@ -99,7 +105,9 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         formData.append("quantity", data.quantity.toString());
         formData.append("customerName", data.customerName);
         formData.append("customerEmail", data.customerEmail);
+        formData.append("customerEmail", data.customerEmail);
         formData.append("customerPhone", data.customerPhone);
+        formData.append("recaptchaToken", captchaToken);
 
         const result = await submitBookingAction(null, formData);
         setIsSubmitting(false);
@@ -323,7 +331,14 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 Payment is not required at this stage.
                                             </div>
 
-                                            <Button type="submit" size="lg" className="w-full text-lg h-14" disabled={isSubmitting}>
+                                            <div className="flex justify-center my-4 overflow-hidden max-w-full">
+                                                <ReCAPTCHA
+                                                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+                                                    onChange={(val) => setCaptchaToken(val)}
+                                                />
+                                            </div>
+
+                                            <Button type="submit" size="lg" className="w-full text-lg h-14" disabled={isSubmitting || !captchaToken}>
                                                 {isSubmitting ? (
                                                     <>
                                                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />

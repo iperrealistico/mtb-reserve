@@ -1,50 +1,52 @@
 # Testing Guide
 
-We have created several verification scripts to ensure core logic correctness.
+This project uses **Vitest** for unit and integration tests, and **Playwright** for E2E tests.
 
 ## Prerequisites
+- Node.js 20+
+- A test database (optional for unit tests, required for integration tests)
 
-- Node.js & NPM installed.
-- Database running and `DATABASE_URL` set in `.env`.
-- `npx prisma generate` run recently.
-
-## Running Verification Scripts
-
-Use `npx tsx` to run the typescript scripts directly.
-
-### 1. Verify Availability Logic
-Checks that expired pending bookings are correctly ignored and do not block inventory.
+## Environment Variables
+For integration tests, set up a `.env.test` file:
 ```bash
-npx tsx scripts/verify-availability.ts
+DATABASE_URL="postgresql://postgres:password@localhost:5432/mtb_reserve_test?schema=public"
+TEST_MODE=true
 ```
 
-### 2. Verify Timezone Logic
-Checks that dates/times are correctly converted between Local Tenant Time and UTC.
+## Running Tests
+
+### Unit Tests (Fast)
 ```bash
-npx tsx scripts/verify-timezone.ts
+npm run test:unit
 ```
+These tests use mocks for the database and external services.
 
-### 3. Verify Dynamic Slots
-Checks that custom slots (JSON) are parsed correctly and "Full Day" logic is applied.
+### Integration Tests
 ```bash
-npx tsx scripts/verify-slots.ts
+npm run test:integration
 ```
+These tests run against a real (isolated) database.
 
-### 4. Verify Calendar Actions
-Checks that the Admin Calendar action correctly fetches bookings for a specific day.
+### E2E Tests
 ```bash
-npx tsx scripts/verify-calendar.ts
+npx playwright install
+npm run test:e2e
 ```
 
-### 5. Verify Settings Persistence
-Checks that Admin Settings form updates are saved to the database.
+### All Tests
 ```bash
-npx tsx scripts/verify-settings.ts
+npm run test:all
 ```
 
-## Continuous Integration (CI)
+## IDE Integration
+You can run tests directly from the **Tests** tab in VS Code or JetBrains IDEs by selecting "Vitest" as the test runner.
 
-Ideally, these scripts can be added to a CI pipeline or `package.json` scripts:
-```json
-"test:scripts": "npx tsx scripts/verify-availability.ts && npx tsx scripts/verify-timezone.ts ..."
-```
+## Mocking and Stubs
+- **Time**: Use `vi.setSystemTime` to control time-based logic (expiry, cooldowns).
+- **Emails**: Emails are mocked in `test/setup.ts` using `vi.mock('resend')`.
+- **ReCAPTCHA**: ReCAPTCHA always returns `true` in test mode via `test/setup.ts`.
+- **Database**: Unit tests mock the Prisma `db` client. Integration tests use an isolated schema.
+
+## Troubleshooting
+- If tests fail due to Prisma errors, ensure `npx prisma db push` has been run on the test database.
+- If E2E tests fail, ensure the dev server is running or use `npx playwright test --ui`.

@@ -2,22 +2,19 @@
 
 import { getSession, verifyPassword } from "@/lib/auth";
 import { getTenantBySlug } from "@/lib/tenants";
-import { RateLimiterMemory } from "rate-limiter-flexible";
+import { rateLimit } from "@/lib/rate-limit";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-// MVP: In-memory rate limiter. 
-// Note: In serverless (Vercel), this memory is not shared across lambdas.
-// For production, use Redis or Database store as requested.
-// We are using memory here for initial simplicity but this SHOULD be upgraded.
-const rateLimiter = new RateLimiterMemory({
-    points: 5, // 5 attempts
-    duration: 60 * 15, // per 15 minutes
-});
+
+import { logEvent } from "@/lib/events";
+
 
 export async function loginAction(prevState: any, formData: FormData) {
     const slug = formData.get("slug") as string;
     const password = formData.get("password") as string;
+    const token = formData.get("recaptchaToken") as string;
 
     if (!slug || !password) {
         return { error: "Missing slug or password" };
@@ -25,19 +22,31 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     // 1. Rate Limiting
     const headerList = await headers();
-    const ip = headerList.get("x-forwarded-for") || "unknown";
-    try {
-        await rateLimiter.consume(ip);
-    } catch (rej) {
+    const ip = headerList.get("x-forwarded-for") || "127.0.0.1";
+
+    const limitResult = await rateLimit(`tenant_login:${ip}`, 5, 900); // 5 attempts per 15 min
+    if (!limitResult.success) {
+        // Log generic failure? Maybe too noisy.
         return { error: "Too many login attempts. Please try again later." };
     }
+
+    // 2. ReCAPTCHA
+    const isHuman = await verifyRecaptcha(token);
+    if (!isHuman) {
+        return { error: "Security check failed. Please try again." };
+    }
+
 
     // 2. Fetch Tenant
     const tenant = await getTenantBySlug(slug);
     if (!tenant) {
-        // Security: Don't reveal tenant existence? 
-        // But URL is /[slug]/admin, so slug validity is known.
-        // However, for login form, we can just say "Invalid credentials"
+        await logEvent({
+            level: "WARN",
+            actorType: "GUEST",
+            eventType: "LOGIN_FAILURE",
+            message: "Tenant login failed: tenant not found",
+            metadata: { slug, reason: "Tenant not found" }
+        });
         return { error: "Invalid credentials" };
     }
 
@@ -45,8 +54,23 @@ export async function loginAction(prevState: any, formData: FormData) {
     const isValid = await verifyPassword(password, tenant.adminPasswordHash);
 
     if (!isValid) {
+        await logEvent({
+            level: "WARN",
+            actorType: "TENANT_ADMIN",
+            tenantId: tenant.slug,
+            eventType: "LOGIN_FAILURE",
+            message: "Tenant login failed: invalid password"
+        });
         return { error: "Invalid credentials" };
     }
+
+    await logEvent({
+        level: "INFO",
+        actorType: "TENANT_ADMIN",
+        tenantId: tenant.slug,
+        eventType: "LOGIN_SUCCESS",
+        message: "Tenant login success"
+    });
 
     // 4. Create Session
     const session = await getSession();

@@ -36,7 +36,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ slug
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-heading font-bold text-gray-900">
-                        Today's Operations
+                        Today&apos;s Operations
                     </h2>
                     <p className="text-xl text-gray-500 mt-1">
                         {format(today, "EEEE, MMMM do")}

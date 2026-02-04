@@ -2,9 +2,12 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { ensureAuthenticated } from "@/lib/auth";
 
 export async function createBikeTypeAction(formData: FormData) {
     const slug = formData.get("slug") as string;
+    await ensureAuthenticated(slug);
+
     const name = formData.get("name") as string;
     const totalStock = Number(formData.get("totalStock"));
 
@@ -23,8 +26,10 @@ export async function createBikeTypeAction(formData: FormData) {
 }
 
 export async function updateBikeTypeAction(formData: FormData) {
-    const id = formData.get("id") as string;
     const slug = formData.get("slug") as string;
+    await ensureAuthenticated(slug);
+
+    const id = formData.get("id") as string;
     const totalStock = Number(formData.get("totalStock"));
     const brokenCount = Number(formData.get("brokenCount"));
 

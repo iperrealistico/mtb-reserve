@@ -3,38 +3,17 @@
 import { db } from "@/lib/db";
 import { getBikeAvailability, AvailabilityResult } from "@/lib/availability";
 import { bookingSchema } from "@/lib/schemas";
-import { getTenantBySlug, getTenantSettings, TenantSlot } from "@/lib/tenants";
+import { getTenantBySlug, getTenantSettings, TenantSlot, getComputedSlots } from "@/lib/tenants";
 import { randomUUID } from "crypto";
 
 import { createZonedDate } from "@/lib/time";
 import { sendConfirmationLink } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
-function getComputedSlots(tenant: any): TenantSlot[] {
-    const settings = getTenantSettings(tenant);
-    const slots = [...(settings.slots || [])]; // Copy
 
-    if (settings.fullDayEnabled && slots.length > 0) {
-        // Compute min start and max end
-        // Simplistic: Sort by start time?
-        // For MVP, lets just assume Morning/Afternoon are ordered or just take min/max strings.
-        let minStart = slots[0].start;
-        let maxEnd = slots[0].end;
-
-        for (const s of slots) {
-            if (s.start < minStart) minStart = s.start;
-            if (s.end > maxEnd) maxEnd = s.end;
-        }
-
-        slots.push({
-            id: "full-day",
-            label: `Full Day (${minStart} - ${maxEnd})`,
-            start: minStart,
-            end: maxEnd
-        });
-    }
-
-    return slots;
-}
+import { headers } from "next/headers";
+import { logEvent } from "@/lib/events";
 
 export async function getAvailabilityAction(slug: string, date: Date) {
     const tenant = await getTenantBySlug(slug);
@@ -57,6 +36,30 @@ export async function getAvailabilityAction(slug: string, date: Date) {
 }
 
 export async function submitBookingAction(prevState: any, formData: FormData) {
+    // 1. Rate Limit
+    const headerList = await headers();
+    const ip = headerList.get("x-forwarded-for") || "127.0.0.1";
+
+    // 10 bookings per hour per IP seem reasonable for normal use, blocking bots
+    const limitResult = await rateLimit(`booking_request:${ip}`, 10, 3600);
+    if (!limitResult.success) {
+        await logEvent({
+            level: "WARN",
+            actorType: "GUEST",
+            eventType: "RATE_LIMIT_BLOCKED",
+            message: "Booking rate limit exceeded",
+            metadata: { ip, limit: 10, window: 3600 }
+        });
+        return { error: "Too many booking attempts. Please try again later." };
+    }
+
+    // 2. ReCAPTCHA
+    const token = formData.get("recaptchaToken") as string;
+    const isHuman = await verifyRecaptcha(token);
+    if (!isHuman) {
+        return { error: "Security check failed. Please try again." };
+    }
+
     // Parse Form Data (manual parsing or use library helper)
     // For simplicity, we assume client sends JSON or structured data, but Server Actions receive FormData mostly.
     // We'll trust the client component to send structured args if we change signature, 
@@ -99,23 +102,35 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
 
     // ATOMIC TRANSACTION
     try {
-        const booking = await db.$transaction(async (tx: any) => { // Using any to avoid complex import for now, or Prisma.TransactionClient
+        const booking = await db.$transaction(async (tx) => {
             // 1. Re-Check Availability INSIDE Transaction
             // Calculate overlapping bookings count
             const bikeType = await tx.bikeType.findUnique({ where: { id: data.bikeTypeId } });
             if (!bikeType) throw new Error("Invalid bike type");
 
-            const overlappingCount = await tx.booking.count({
+            const aggregateResult = await tx.booking.aggregate({
+                _sum: { quantity: true },
                 where: {
                     tenantSlug: data.slug,
                     bikeTypeId: data.bikeTypeId,
-                    status: { in: ["CONFIRMED", "PENDING_CONFIRM"] },
-                    startTime: { lt: endTime },
-                    endTime: { gt: startTime },
+                    AND: [
+                        { startTime: { lt: endTime } },
+                        { endTime: { gt: startTime } },
+                        {
+                            OR: [
+                                { status: "CONFIRMED" },
+                                {
+                                    status: "PENDING_CONFIRM",
+                                    expiresAt: { gt: new Date() },
+                                },
+                            ],
+                        },
+                    ],
                 },
             });
 
-            const available = bikeType.totalStock - bikeType.brokenCount - overlappingCount;
+            const bookedCount = aggregateResult._sum.quantity || 0;
+            const available = bikeType.totalStock - bikeType.brokenCount - bookedCount;
             if (available < data.quantity) {
                 throw new Error("No longer available");
             }
@@ -142,6 +157,22 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
 
         // 3. Send Email
         await sendConfirmationLink(data.customerEmail, data.slug, booking.confirmationToken!);
+
+        await logEvent({
+            level: "INFO",
+            actorType: "GUEST",
+            tenantId: data.slug,
+            eventType: "BOOKING_REQUESTED",
+            message: "Booking requested by guest",
+            entityType: "Booking",
+            entityId: booking.id,
+            metadata: {
+                email: data.customerEmail,
+                quantity: data.quantity,
+                bikeTypeId: data.bikeTypeId,
+                slotId: data.slotId
+            }
+        });
 
         return { success: true, bookingId: booking.id };
 

@@ -55,7 +55,10 @@ export async function getBikeAvailability(
     const availability: AvailabilityResult = {};
 
     for (const bike of bikeTypes) {
-        const overlappingBookings = await db.booking.count({
+        const result = await db.booking.aggregate({
+            _sum: {
+                quantity: true,
+            },
             where: {
                 tenantSlug,
                 bikeTypeId: bike.id,
@@ -75,7 +78,8 @@ export async function getBikeAvailability(
             },
         });
 
-        const available = bike.totalStock - bike.brokenCount - overlappingBookings;
+        const bookedCount = result._sum.quantity || 0;
+        const available = bike.totalStock - bike.brokenCount - bookedCount;
         availability[bike.id] = Math.max(0, available);
     }
 

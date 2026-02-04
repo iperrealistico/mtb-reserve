@@ -18,29 +18,50 @@ NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 RESEND_API_KEY="re_..." 
 FROM_EMAIL="onboarding@resend.dev"
 
+
 # Dev Flags
 # Set to "1" or "true" to log emails to console instead of sending
 EMAIL_DISABLED="false" 
+
+# Security
+IP_SALT="random_string_change_me_in_prod"
 ```
 
-## Manual Tenant Onboarding
+## Super Admin Setup
 
-Currently, there is no Super-Admin UI. To add a new shop (Tenant):
+To manage tenants (shops), you need a Super Admin account.
+
+1.  **Create Super Admin**:
+    Run the provided script to seed the first super admin user.
+    ```bash
+    npx tsx scripts/create-super-admin.ts <email> <password>
+    ```
+    Example:
+    ```bash
+    npx tsx scripts/create-super-admin.ts admin@mtb.com securePass123
+    ```
+
+2.  **Access Admin Panel**:
+    Navigate to `/admin/login`.
+    Log in with the credentials created above.
+
+3.  **Create Tenants**:
+    Use the UI at `/admin` to create new tenants. Passwords will be auto-generated and displayed.
+
+## Manual Tenant Onboarding (Alternative)
+
+If you prefer direct database access:
 
 1.  **Generate Password Hash**:
     Use a tool or script to hash the password (bcrypt).
-    ```bash
-    # Example script usage (if available) or online generator
-    # Hashes should be bcrypt compatible.
-    ```
 2.  **Insert into Database**:
     Access your database (e.g., via `prisma studio` or SQL client).
     ```sql
     INSERT INTO "Tenant" (slug, name, adminPasswordHash, contactEmail, timezone)
     VALUES ('myshop', 'My Bike Shop', '$2b$10$...', 'info@myshop.com', 'Europe/Rome');
     ```
-3.  **Configure Settings (Optional)**:
-    Start the app, log in as `myshop`, and go to `/myshop/admin/settings` to configure slots.
+3.  **Configure Settings**:
+    Log in as `myshop` at `/myshop/admin/login` and go to settings.
 
 ## Timezones
 

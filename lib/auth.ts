@@ -7,6 +7,8 @@ import bcrypt from "bcrypt";
 export interface SessionData {
     tenantSlug?: string;
     isLoggedIn: boolean;
+    isSuperAdmin?: boolean;
+    superAdminId?: string;
 }
 
 export const sessionOptions: SessionOptions = {
@@ -37,12 +39,38 @@ export async function verifyPassword(plainText: string, hash: string): Promise<b
 
 // --- Memorable Password Generator ---
 
-const ADJECTIVES = ["swift", "blue", "calm", "wild", "fast", "green", "brave", "dark", "bright", "cool"];
-const NOUNS = ["hawk", "river", "bear", "wolf", "peak", "trail", "rock", "tree", "moon", "sun"];
+const ITALIAN_NOUNS = ["Montagna", "Sentiero", "Foresta", "Roccia", "Lago", "Fiume", "Valle", "Cima", "Neve", "Sole", "Luna", "Stella", "Vento", "Amico", "Tempo", "Vita", "Cuore", "Mare", "Terra", "Fuoco"];
+const ITALIAN_ADJECTIVES = ["Grande", "Piccolo", "Forte", "Veloc", "Lento", "Alto", "Basso", "Nuovo", "Vecchio", "Bello", "Brutto", "Buono", "Cattivo", "Dolce", "Amaro", "Freddo", "Caldo", "Scuro", "Chiaro"];
+const ENGLISH_NOUNS = ["Trail", "Bike", "Ride", "Jump", "Drop", "Turn", "Flow", "Rock", "Root", "Dirt"];
 
-export function generateMemorablePassword(): string {
-    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-    const num = Math.floor(Math.random() * 99) + 1; // 1-99
-    return `${adj}-${noun}-${num}`;
+export function generateSecureItalianPassword(): string {
+    // Format: Word1-Word2-Word3-1234
+    // Must include at least ONE Italian word. We will use mostly Italian for simplicity and style.
+    // Capitalize each word.
+
+    const getWord = (list: string[]) => list[Math.floor(Math.random() * list.length)];
+
+    const w1 = getWord(ITALIAN_NOUNS); // Italian
+    const w2 = getWord(ITALIAN_ADJECTIVES); // Italian
+    const w3 = getWord(ENGLISH_NOUNS); // English mix or Italian? Requirement: "at least ONE Italian word". Let's mix for flavor if we want, but "Montagna-Grande-Trail-1234" is cool.
+
+    // Let's stick to Italian-Italian-Italian or mixed. The existing codebase had English.
+    // "Must be longer than current passwords (target 24+ characters typical)"
+    // 3 words might be short if words are short. 
+    // "Montagna-Grande-Trail-1234" is 24 chars? 8+6+5+4 + 3 dashes = 26. Good.
+
+    const num = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+
+    return `${w1}-${w2}-${w3}-${num}`;
+}
+
+export async function ensureAuthenticated(slug?: string) {
+    const session = await getSession();
+    if (!session.isLoggedIn) {
+        throw new Error("Unauthorized: Please log in.");
+    }
+    if (slug && !session.isSuperAdmin && session.tenantSlug !== slug) {
+        throw new Error("Forbidden: You do not have access to this tenant.");
+    }
+    return session;
 }

@@ -1,10 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { getTenantBySlug, TenantSettings, DEFAULT_SLOTS } from "@/lib/tenants";
+import { TenantSettings, DEFAULT_SLOTS } from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
+import { ensureAuthenticated } from "@/lib/auth";
 
 export async function updateTenantSettingsAction(slug: string, formData: FormData) {
+    await ensureAuthenticated(slug);
     const contactEmail = formData.get("contactEmail") as string;
     const contactPhone = formData.get("contactPhone") as string;
 
@@ -23,7 +25,7 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
     let slots = DEFAULT_SLOTS;
     try {
         slots = JSON.parse(slotsStr);
-    } catch (e) {
+    } catch {
         return { error: "Invalid slots data" };
     }
 
@@ -46,12 +48,12 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
 
         try {
             revalidatePath(`/${slug}/admin/settings`);
-        } catch (e) {
+        } catch {
             // Ignored for script testing or if outside request context
         }
 
         return { success: true };
-    } catch (error: any) {
-        return { error: error.message || "Update failed" };
+    } catch (error: unknown) {
+        return { error: (error as Error).message || "Update failed" };
     }
 }

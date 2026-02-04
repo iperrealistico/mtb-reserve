@@ -3,8 +3,10 @@
 import { db } from "@/lib/db";
 import { getTenantBySlug } from "@/lib/tenants";
 import { createZonedDate } from "@/lib/time";
+import { ensureAuthenticated } from "@/lib/auth";
 
 export async function getDailyBookingsAction(slug: string, dateString: string) {
+    await ensureAuthenticated(slug);
     // dateString implicitly from URL, e.g. "2024-06-01" or whatever Format day picker uses
     // If empty, use today.
 
@@ -29,15 +31,6 @@ export async function getDailyBookingsAction(slug: string, dateString: string) {
 
     // We want the RANGE for this "Wall Clock Day" in the Tenant Timezone.
     // 00:00 Rome -> 23:59:59 Rome
-
-    // If dateString is "2024-06-01":
-    const year = targetDate.getFullYear();
-    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const day = String(targetDate.getDate()).padStart(2, '0');
-    // Ensure we use the date components of the INPUT string if it was parsed correctly
-    // If dateString "2024-06-01" -> Date parses to UTC midnight.
-    // So getFullYear etc might be distinct if we use getUTC... 
-    // Safe bet: Extract YYYY-MM-DD from the string directly if possible.
 
     // Let's rely on createZonedDate logic which assumes baseDate is a JS Date object.
 
