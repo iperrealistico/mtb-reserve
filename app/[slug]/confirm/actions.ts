@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
+import { sendBookingRecap, sendAdminNotification } from "@/lib/email";
 
 export async function confirmBookingAction(token: string) {
     if (!token) return { error: "Missing token" };
@@ -55,9 +56,17 @@ export async function confirmBookingAction(token: string) {
             return { success: true, booking: updated };
         });
 
-        // 4. Send Recap Email (Mock)
+        // 4. Send Emails
         if (result.success) {
-            console.log(`[EMAIL] Sending confirmation recap to ${result.booking.customerEmail}`);
+            const tenant = await db.tenant.findUnique({ where: { slug: result.booking.tenantSlug } });
+
+            // Send to Customer
+            await sendBookingRecap(result.booking.customerEmail, result.booking);
+
+            // Send to Admin
+            if (tenant && tenant.contactEmail) {
+                await sendAdminNotification(tenant.contactEmail, result.booking);
+            }
         }
 
         return result;

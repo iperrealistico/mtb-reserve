@@ -1,27 +1,52 @@
-"use server";
-
 import { db } from "@/lib/db";
 import { getBikeAvailability, AvailabilityResult } from "@/lib/availability";
 import { bookingSchema } from "@/lib/schemas";
-import { getTenantBySlug } from "@/lib/tenants";
+import { getTenantBySlug, getTenantSettings, TenantSlot } from "@/lib/tenants";
 import { randomUUID } from "crypto";
 
-// Helper to define slots (should move to tenant settings later)
-const SLOTS = [
-    { id: "morning", label: "Morning (09:00 - 13:00)", start: "09:00", end: "13:00" },
-    { id: "afternoon", label: "Afternoon (14:00 - 18:00)", start: "14:00", end: "18:00" },
-    { id: "full-day", label: "Full Day (09:00 - 18:00)", start: "09:00", end: "18:00" },
-];
+import { createZonedDate } from "@/lib/time";
+import { sendConfirmationLink } from "@/lib/email";
+
+function getComputedSlots(tenant: any): TenantSlot[] {
+    const settings = getTenantSettings(tenant);
+    const slots = [...(settings.slots || [])]; // Copy
+
+    if (settings.fullDayEnabled && slots.length > 0) {
+        // Compute min start and max end
+        // Simplistic: Sort by start time?
+        // For MVP, lets just assume Morning/Afternoon are ordered or just take min/max strings.
+        let minStart = slots[0].start;
+        let maxEnd = slots[0].end;
+
+        for (const s of slots) {
+            if (s.start < minStart) minStart = s.start;
+            if (s.end > maxEnd) maxEnd = s.end;
+        }
+
+        slots.push({
+            id: "full-day",
+            label: `Full Day (${minStart} - ${maxEnd})`,
+            start: minStart,
+            end: maxEnd
+        });
+    }
+
+    return slots;
+}
 
 export async function getAvailabilityAction(slug: string, date: Date) {
-    const settings = SLOTS; // TODO: Load from tenant settings
+    const tenant = await getTenantBySlug(slug);
+    if (!tenant) return { slots: [], availability: {} }; // Validation?
+
+    const timezone = tenant.timezone || "Europe/Rome";
+    const settings = getComputedSlots(tenant);
     const result: Record<string, AvailabilityResult> = {};
 
     for (const slot of settings) {
-        result[slot.id] = await getBikeAvailability(slug, date, slot.start, slot.end);
+        result[slot.id] = await getBikeAvailability(slug, date, slot.start, slot.end, timezone);
     }
 
-    return { slots: settings, availability: result };
+    return { slots: settings, availability: result, timezone };
 }
 
 export async function submitBookingAction(prevState: any, formData: FormData) {
@@ -55,19 +80,15 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
     const tenant = await getTenantBySlug(data.slug);
     if (!tenant) return { error: "Tenant not found" };
 
-    // Determine Times (Hardcoded for MVP based on Slot ID)
-    // Real app: lookup slot config from tenant settings
-    const slot = SLOTS.find(s => s.id === data.slotId);
+    const timezone = tenant.timezone || "Europe/Rome";
+
+    // Determine Times (Dynamic)
+    const availableSlots = getComputedSlots(tenant);
+    const slot = availableSlots.find(s => s.id === data.slotId);
     if (!slot) return { error: "Invalid slot" };
 
-    const [startH, startM] = slot.start.split(":").map(Number);
-    const [endH, endM] = slot.end.split(":").map(Number);
-
-    const startTime = new Date(data.date);
-    startTime.setHours(startH, startM, 0, 0);
-
-    const endTime = new Date(data.date);
-    endTime.setHours(endH, endM, 0, 0);
+    const startTime = createZonedDate(data.date, slot.start, timezone);
+    const endTime = createZonedDate(data.date, slot.end, timezone);
 
     // ATOMIC TRANSACTION
     try {
@@ -112,8 +133,8 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
             });
         });
 
-        // 3. Send Email (Mock)
-        console.log(`[EMAIL] Sending confirmation link to ${data.customerEmail}: /${data.slug}/confirm?token=${booking.confirmationToken}`);
+        // 3. Send Email
+        await sendConfirmationLink(data.customerEmail, data.slug, booking.confirmationToken!);
 
         return { success: true, bookingId: booking.id };
 
