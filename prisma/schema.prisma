@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  slug                String   @id
+  name                String
+  adminPasswordHash   String
+  contactEmail        String
+  contactPhone        String?
+  address             String?
+  timezone            String   @default("Europe/Rome")
+  
+  // Settings stored as JSON: slots, fullDayEnabled, buffer, etc.
+  settings            Json? 
+
+  bikeTypes           BikeType[]
+  bookings            Booking[]
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model BikeType {
+  id          String   @id @default(cuid())
+  tenantSlug  String
+  name        String
+  totalStock  Int      @default(0)
+  brokenCount Int      @default(0)
+  notes       String?
+
+  tenant      Tenant   @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
+  bookings    Booking[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum BookingStatus {
+  PENDING_CONFIRM
+  CONFIRMED
+  REJECTED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  tenantSlug        String
+  bikeTypeId        String
+  
+  status            BookingStatus @default(PENDING_CONFIRM)
+  
+  startTime         DateTime
+  endTime           DateTime
+  
+  // Customer Info
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  
+  quantity          Int           @default(1)
+  
+  // Confirmation logic
+  confirmationToken String?       @unique
+  expiresAt         DateTime?     // When pending confirmation expires
+
+  tenant            Tenant        @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
+  bikeType          BikeType      @relation(fields: [bikeTypeId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([tenantSlug])
+  @@index([status])
+  @@index([confirmationToken])
+}
