@@ -14,7 +14,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     const email = formData.get("email") as string;
 
     if (!slug || !email) {
-        return { error: "Email is required" };
+        return redirect(`/${slug}/admin/forgot-password?error=Email is required`);
     }
 
     // 1. Rate Limit
