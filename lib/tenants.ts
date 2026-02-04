@@ -13,7 +13,8 @@ export interface TenantSlot {
 export interface TenantSettings {
     slots?: TenantSlot[];
     fullDayEnabled?: boolean;
-    // Add other settings here safely
+    blockedDates?: string[]; // ISO Date Strings "YYYY-MM-DD"
+    minAdvanceHours?: number; // Minimum hours before booking starts
 }
 
 // Default Slots if none configured
@@ -37,5 +38,7 @@ export function getTenantSettings(tenant: { settings: any }): TenantSettings {
     return {
         slots: s.slots || DEFAULT_SLOTS,
         fullDayEnabled: s.fullDayEnabled ?? true,
+        blockedDates: s.blockedDates || [],
+        minAdvanceHours: s.minAdvanceHours || 0,
     };
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Trash2 } from "lucide-react";
 import { updateTenantSettingsAction } from "./actions";
 import { TenantSettings, TenantSlot } from "@/lib/tenants";
 import { toast } from "sonner"; // Assuming sonner is installed/setup
@@ -88,6 +89,7 @@ export default function SettingsForm({
                                 <Label>Label</Label>
                                 <Input
                                     value={slot.label}
+                                    placeholder="e.g. Morning Selection"
                                     onChange={(e) => updateSlot(index, "label", e.target.value)}
                                 />
                             </div>
@@ -108,21 +110,38 @@ export default function SettingsForm({
                                 />
                             </div>
                             <Button type="button" variant="destructive" size="icon" onClick={() => removeSlot(index)}>
-                                🗑️
+                                <Trash2 className="w-4 h-4" />
                             </Button>
                         </div>
                     ))}
                 </div>
 
-                <div className="flex items-center gap-2 pt-4">
-                    <input
-                        type="checkbox"
-                        id="fullDayEnabled"
-                        className="h-4 w-4"
-                        checked={fullDayEnabled}
-                        onChange={(e) => setFullDayEnabled(e.target.checked)}
+            </div>
+
+            <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-medium">Advanced Availability</h3>
+
+                <div className="grid gap-2">
+                    <Label htmlFor="minAdvanceHours">Minimum Advance Notice (Hours)</Label>
+                    <p className="text-sm text-gray-500">How many hours in advance must a booking be made? (0 = no limit)</p>
+                    <Input
+                        id="minAdvanceHours"
+                        name="minAdvanceHours"
+                        type="number"
+                        min="0"
+                        defaultValue={initialSettings.minAdvanceHours}
                     />
-                    <Label htmlFor="fullDayEnabled">Enable "Full Day" option (Automatically covers min start to max end)</Label>
+                </div>
+
+                <div className="space-y-2">
+                    <Label>Blocked Dates (Yearly/Recurring not supported yet, manual block only)</Label>
+                    <p className="text-sm text-gray-500">Enter dates in YYYY-MM-DD format (comma separated for now)</p>
+                    <Input
+                        name="blockedDates"
+                        placeholder="2024-12-25, 2025-01-01"
+                        defaultValue={initialSettings.blockedDates?.join(", ")}
+                    />
+                    {/* Ideally a date picker, but text input is fastest for MVP */}
                 </div>
             </div>
 

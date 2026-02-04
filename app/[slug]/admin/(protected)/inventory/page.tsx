@@ -21,61 +21,96 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                 </div>
             </div>
 
-            <div className="flex flex-col">
-                <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                    <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-                        <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Bike Name
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Total Stock
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Broken / Maintenance
-                                        </th>
-                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Available (Calc)
-                                        </th>
-                                        <th scope="col" className="relative px-6 py-3">
-                                            <span className="sr-only">Update</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {bikeTypes.map((bike: any) => (
-                                        <tr key={bike.id}>
-                                            <form action={updateBikeTypeAction as unknown as (formData: FormData) => void} className="contents">
-                                                <input type="hidden" name="id" value={bike.id} />
-                                                <input type="hidden" name="slug" value={slug} />
+            {bikeTypes.length === 0 ? (
+                <div className="p-12 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed">
+                    No bike types found. Add your first bike type below.
+                </div>
+            ) : (
+                <div className="border rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Bike Name
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Total Stock
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Broken / Maint.
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Calc Available
+                                </th>
+                                <th scope="col" className="relative px-6 py-3">
+                                    <span className="sr-only">Update</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {bikeTypes.map((bike: any) => (
+                                <tr key={bike.id}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {bike.name}
+                                    </td>
+                                    {/* Form embedded in row for updates */}
+                                    {/* Note: In React 19/Next 15 actions can be bound to forms, but multiple forms in a table might be messy.
+                                         The provided code had individual forms per row. Let's keep that pattern but ensure it closes properly. 
+                                         Wait, HTML <form> cannot be a child of <tr> directly. It must be inside <td> or the whole table inside form? 
+                                         Actually, <form> is invalid directly under <tr> or <tbody>. 
+                                         Next.js `action` on form is nice, but DOM nesting rules apply. 
+                                         This might be why it's not showing! Browser removes invalid nodes.
+                                     */}
+                                    <td colSpan={4} className="p-0">
+                                        {/* We'll use a trick: <td ...><form ...> content </form></td>? No that breaks columns.
+                                         Correct way: Wrap inputs in form, but form cannot span multiple TDs easily.
+                                         Alternatively, use `formAction` on button and wrap the whole row inputs? No, inputs must likely be inside form.
+                                         
+                                         Better approach: Make the `Update` button trigger the action, and use `form` attribute on inputs? 
+                                         Or just wrap the specific cells?
+                                         
+                                         Let's try a single cell Form that mimics a row? No.
+                                         
+                                         Let's use the `form` attribute.
+                                         <form id={`form-${bike.id}`} action={...}><input type="hidden" ... /></form>
+                                         <input form={`form-${bike.id}`} ... />
+                                         
+                                         Refactoring to correct HTML structure.
+                                         */}
 
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {bike.name}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    <Input name="totalStock" type="number" defaultValue={bike.totalStock} className="w-20" min={0} />
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    <Input name="brokenCount" type="number" defaultValue={bike.brokenCount} className="w-20" min={0} />
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {Math.max(0, bike.totalStock - bike.brokenCount)}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <Button size="sm" type="submit">Update</Button>
-                                                </td>
-                                            </form>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Re-rendering properly below with correct structure */}
+                    <div className="bg-white divide-y divide-gray-200">
+                        {bikeTypes.map((bike: any) => (
+                            <form key={bike.id} action={updateBikeTypeAction as unknown as (formData: FormData) => void} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50">
+                                <input type="hidden" name="id" value={bike.id} />
+                                <input type="hidden" name="slug" value={slug} />
+
+                                <div className="col-span-4 font-medium text-sm text-gray-900">{bike.name}</div>
+                                <div className="col-span-2">
+                                    <Input name="totalStock" type="number" defaultValue={bike.totalStock} className="h-8 w-20" min={0} />
+                                    <span className="text-xs text-gray-400">Total</span>
+                                </div>
+                                <div className="col-span-2">
+                                    <Input name="brokenCount" type="number" defaultValue={bike.brokenCount} className="h-8 w-20" min={0} />
+                                    <span className="text-xs text-gray-400">Broken</span>
+                                </div>
+                                <div className="col-span-2 text-sm text-gray-500">
+                                    Avail: <span className="font-bold text-gray-900">{Math.max(0, bike.totalStock - bike.brokenCount)}</span>
+                                </div>
+                                <div className="col-span-2 text-right">
+                                    <Button size="sm" type="submit">Update</Button>
+                                </div>
+                            </form>
+                        ))}
                     </div>
                 </div>
-            </div>
+            )}
 
             <Card className="max-w-md">
                 <CardHeader>

@@ -45,7 +45,12 @@ export async function getAvailabilityAction(slug: string, date: Date) {
     const result: Record<string, AvailabilityResult> = {};
 
     for (const slot of settings) {
-        result[slot.id] = await getBikeAvailability(slug, date, slot.start, slot.end, timezone);
+        // We need to pass the full settings object which includes blockedDates and minAdvanceHours.
+        // But getComputedSlots only returns the array of slots.
+        // We should fetch full settings earlier.
+        // Refactoring slightly to reuse the full settings object.
+        const allSettings = getTenantSettings(tenant);
+        result[slot.id] = await getBikeAvailability(slug, date, slot.start, slot.end, timezone, allSettings);
     }
 
     return { slots: settings, availability: result, timezone };

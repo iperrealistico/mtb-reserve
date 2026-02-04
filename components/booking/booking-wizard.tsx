@@ -113,7 +113,10 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
     };
 
     // Derived UI Data
-    const formatSlotLabel = (id: string) => slots.find(s => s.id === id)?.label;
+    const formatSlotLabel = (id: string) => {
+        const slot = slots.find(s => s.id === id);
+        return (slot?.label && slot.label.trim() !== "") ? slot.label : "Standard Slot";
+    };
     const formatBikeName = (id: string) => tenant.bikeTypes.find(b => b.id === id)?.name;
 
     const stepsList = [
@@ -202,7 +205,9 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                             }
                                             `}
                                                     >
-                                                        <span className="text-lg font-bold text-gray-900 mb-1">{slot.label}</span>
+                                                        <span className="text-lg font-bold text-gray-900 mb-1">
+                                                            {(slot.label && slot.label.trim() !== "") ? slot.label : "Standard Slot"}
+                                                        </span>
                                                         <div className="mt-2">
                                                             {isSoldOut ? (
                                                                 <Badge variant="secondary">Sold Out</Badge>

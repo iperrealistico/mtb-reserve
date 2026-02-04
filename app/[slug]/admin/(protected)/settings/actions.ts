@@ -8,22 +8,30 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
     const contactEmail = formData.get("contactEmail") as string;
     const contactPhone = formData.get("contactPhone") as string;
 
-    // Parse slots from JSON string (client will stringify)
-    const slotsJson = formData.get("slots") as string;
+    const slotsStr = formData.get("slots") as string;
     const fullDayEnabled = formData.get("fullDayEnabled") === "on";
+    const minAdvanceHours = Number(formData.get("minAdvanceHours") || 0);
+    const blockedDatesStr = formData.get("blockedDates") as string;
+
+    // Parse blocked dates from comma separated string
+    const blockedDates = blockedDatesStr
+        ? blockedDatesStr.split(",").map(d => d.trim()).filter(d => d.match(/^\d{4}-\d{2}-\d{2}$/))
+        : [];
+
+    if (!slotsStr) return { error: "Invalid slots data" };
 
     let slots = DEFAULT_SLOTS;
     try {
-        if (slotsJson) {
-            slots = JSON.parse(slotsJson);
-        }
+        slots = JSON.parse(slotsStr);
     } catch (e) {
         return { error: "Invalid slots data" };
     }
 
     const settings: TenantSettings = {
         slots,
-        fullDayEnabled
+        fullDayEnabled,
+        minAdvanceHours,
+        blockedDates
     };
 
     try {
