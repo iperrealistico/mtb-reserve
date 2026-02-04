@@ -2,7 +2,8 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 
-const connectionString = `${process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL || process.env.SUPABASE_DATABASE_URL}`;
+// Strip sslmode from the connection string to allow the ssl object to take precedence
+const connectionString = `${process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL || process.env.SUPABASE_DATABASE_URL}`.replace(/\?sslmode=.*$/, "").replace(/&sslmode=.*$/, "");
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
