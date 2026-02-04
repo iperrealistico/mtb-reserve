@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 
 const client = new Client({
     connectionString: process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DATABASE_URL || "postgresql://postgres:password@localhost:5432/mtb_reserve?schema=public",
+    ssl: { rejectUnauthorized: false }
 });
 
 async function main() {
