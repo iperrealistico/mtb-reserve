@@ -17,9 +17,16 @@ export function useSound() {
         }
     }, []);
 
+    const lastPlayTimeRef = useRef<number>(0);
+
     const play = useCallback((type: SoundType) => {
         const ctx = audioContextRef.current;
         if (!ctx) return;
+
+        // Cooldown to prevent double/multiple triggers (spams)
+        const nowMs = Date.now();
+        if (nowMs - lastPlayTimeRef.current < 100) return;
+        lastPlayTimeRef.current = nowMs;
 
         // Resume if suspended (browser autoplay policy)
         if (ctx.state === 'suspended') {
