@@ -1,9 +1,8 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
-
-const prisma = new PrismaClient();
+const db = new PrismaClient();
 
 async function main() {
     const password = crypto.randomBytes(12).toString('hex');
@@ -14,7 +13,7 @@ async function main() {
     console.log(`Resetting Super Admin password for ${email}...`);
 
     // Upsert the super admin
-    await prisma.superAdmin.upsert({
+    await db.superAdmin.upsert({
         where: { email },
         update: { passwordHash },
         create: {
@@ -35,7 +34,4 @@ main()
     .catch((e) => {
         console.error(e);
         process.exit(1);
-    })
-    .finally(async () => {
-        await prisma.$disconnect();
     });
