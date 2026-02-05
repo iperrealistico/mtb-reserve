@@ -1,70 +1,96 @@
-# Operations Hub
+# OPERATIONS_HUB.md - MTBR Feature Implementation
 
-## Quality Gate
+## Status: ✅ COMPLETE
 
-### Phase A — AI Static Analysis Audit (Findings)
+## Summary of Changes
 
-#### System Invariants
-- **No Overbooking**: Confirmed bookings + non-expired pending must never exceed available stock.
-- **Expiry Releases Stock**: `PENDING_CONFIRM` bookings older than 30 mins must not block availability.
-- **Tenant Isolation**: Admins must never be able to access or modify other tenants' data.
-- **Atomic Bookings**: Stock check and booking creation must be atomic.
-- **Single-use Confirmation**: Tokens should effectively be single-use (status based).
+### Part 1: Super Admin UI Standardization
+- Created new horizontal navigation bar (`app/admin/(authenticated)/nav.tsx`)
+- Updated layout to match tenant admin styling
+- Updated tenant list page with modern card design
+- Removed emojis, using Lucide icons consistently
+- Title: "Tenant Management Console"
 
-#### Risk Matrix
-| Module | Risk Level | Why | File Paths |
-| :--- | :---: | :--- | :--- |
-| Admin Actions | CRITICAL | Missing `getSession` checks in server actions within protected folders. | `app/[slug]/admin/(protected)/*/actions.ts` |
-| Booking Logic | HIGH | `count()` used instead of `sum(quantity)`, and missing expiry check in transaction. | `app/[slug]/actions.ts` |
-| Confirmation | HIGH | No expiry or availability re-check during confirmation flow. | `app/[slug]/booking/confirm/actions.ts` |
-| Availability | MED | `getBikeAvailability` uses `count()` which fails for multi-bike bookings. | `lib/availability.ts` |
+### Part 2: Content Customization Migration
+- Removed content editor from super admin tenant detail page
+- Added content customization fields to tenant admin settings:
+  - `bookingTitle`, `bookingSubtitle`, `infoBox`
+  - Email subject customization fields
 
-#### Edge Case Inventory
-- **Race Condition**: Two users booking the last bike simultaneously.
-- **Expired Confirm**: Confirming a booking after the 30-min window has passed.
-- **Tenant Cross-talk**: Malicious user trying to use a valid slug in a server action for a different tenant ID.
-- **Multi-bike Overbook**: Booking 2 bikes when only 1 is available (current logic only counts bookings, not quantities).
+### Part 3: Site-Wide SEO & Brand Settings
+- Created `lib/site-settings.ts` for file-based settings storage
+- Created `/admin/settings` page with:
+  - SEO fields (title, description, keywords)
+  - Favicon upload
+  - Social image upload
+- Updated root layout with dynamic metadata generation
 
-#### Logic & Security Findings
-1. **[CRITICAL]** Server actions in `app/[slug]/admin/(protected)` lack auth checks. Any guest can update inventory or settings if they know the slug.
-2. **[HIGH]** `submitBookingAction` uses `tx.booking.count` which counts rows, ignoring `quantity`. Allows massive overbooking.
-3. **[HIGH]** `submitBookingAction` transaction does not filter out expired `PENDING_CONFIRM` rows, reducing availability unnecessarily.
-4. **[HIGH]** `confirmBookingAction` does not check `expiresAt` or re-verify availability. Expired pending bookings can be confirmed even if stock is gone.
-5. **[MED]** No centralized `ensureAuthenticated` helper for actions, leading to inconsistent security.
+### Part 4: Blocked Date Ranges
+- Added `BlockedDateRange` interface to `lib/tenants.ts`
+- Created `lib/blocked-dates.ts` with utilities:
+  - `isDateBlocked()` - checks if date falls in blocked range
+  - `isDateInBookingWindow()` - validates advance notice
+  - Support for recurring yearly ranges
+- Updated tenant settings form with range management UI
+- Integrated with availability checking
 
----
+### Part 5: Min/Max Advance Notice
+- Added `minAdvanceDays` and `maxAdvanceDays` to TenantSettings
+- Created timezone-aware validation
+- UI fields in tenant settings with helper text
+- Backward compatible with legacy `minAdvanceHours`
 
-### Fixes Applied
-1. **[Admin Security]**: Added `ensureAuthenticated(slug)` to all protected server actions (`inventory`, `settings`, `calendar`, `dashboard`).
-2. **[Overbooking]**: Switched from `count()` to `aggregate({ _sum: { quantity: true } })` in `getBikeAvailability` and `submitBookingAction`.
-3. **[Booking Logic]**: Added `expiresAt` check and re-check of availability inside the transaction for `submitBookingAction`.
-4. **[Confirmation Flow]**: Added mandatory `expiresAt` check and atomic availability re-check in `confirmBookingAction`.
-5. **[Code Quality]**: Refactored `getComputedSlots` to `lib/tenants.ts` for better testability and removed unused code.
+### Part 6: Booking Code & Enhanced Recap Email
+- Added `bookingCode` field to Booking model (schema.prisma)
+- Created 8-character alphanumeric code generator (no ambiguous chars)
+- Added `pickupLocationUrl` to TenantSettings
+- Added responsibility checkbox to confirmation form:
+  - Arrive on time
+  - Payment on-site
+  - No-show policy
+- Enhanced email with:
+  - Prominent booking code display
+  - Detailed slot information
+  - Google Maps pickup link
+  - Professional HTML formatting
 
-### Verification Results
-- **Unit Tests**: 7 tests passed (Availability, Admin Auth, Expiry, Slots, Passwords).
-- **Security Audit**: All protected actions now verify sessions.
-- **Lint**: Passing for all modified files.
-- **Typecheck**: Passing for core application logic.
+## Files Modified/Created
 
-### Quality Gate Status
-- [x] Phase A: Static Analysis Audit
-- [x] Phase B: Deterministic Test Suite
-- [x] Phase C: Fix and Harden
-- [x] Lint passes (on modified files)
-- [x] Typecheck passes
-- [x] Unit tests pass
+### New Files
+- `app/admin/(authenticated)/nav.tsx`
+- `app/admin/(authenticated)/settings/page.tsx`
+- `app/admin/(authenticated)/settings/actions.ts`
+- `app/admin/(authenticated)/settings/settings-form.tsx`
+- `lib/site-settings.ts`
+- `lib/blocked-dates.ts`
 
-### Phase D — UI Standardization & UX Fixes
-- [ ] **Design System**: Established unified visual language (Airbnb-like).
-- [ ] **Components**: Standardized Button, Input, Modal, etc. across all apps.
-- [ ] **Sound & Motion**: Implemented micro-animations and sound feedback.
-- [ ] **Security**: Relying on Vercel WAF/Firewall instead of client-side captcha for smoother UX.
-- [ ] **Bug Fixes**:
-  - [ ] Reserve button "stuck" bug fixed (with instrumentation).
-  - [ ] Calendar highlight bug fixed.
-- [ ] **Super Admin**:
-  - [ ] Login standardized (Password-only).
-  - [ ] Logging extended to capture UX events.
-- [ ] **Cleanliness**: Emojis removed, single icon library used.
+### Modified Files
+- `app/admin/(authenticated)/layout.tsx`
+- `app/admin/(authenticated)/page.tsx`
+- `app/admin/(authenticated)/tenants/[slug]/page.tsx`
+- `app/admin/(authenticated)/tenants/[slug]/detail-form.tsx`
+- `app/admin/(authenticated)/tenants/[slug]/emailer.tsx`
+- `app/admin/(authenticated)/tenants/[slug]/password-reset.tsx`
+- `app/[slug]/admin/(protected)/settings/page.tsx`
+- `app/[slug]/admin/(protected)/settings/settings-form.tsx`
+- `app/[slug]/admin/(protected)/settings/actions.ts`
+- `app/[slug]/booking/confirm/actions.ts`
+- `app/[slug]/booking/confirm/[token]/confirmation-form.tsx`
+- `app/layout.tsx`
+- `lib/tenants.ts`
+- `lib/availability.ts`
+- `prisma/schema.prisma`
 
+## Database Changes
+- Added `bookingCode` field to `Booking` model (nullable, unique)
+- Run `npx prisma db push` to apply
+
+## Environment Variables
+No new environment variables required. Existing variables:
+- `NEXT_PUBLIC_BASE_URL` - Used for social image URLs
+- `RESEND_API_KEY` - For emails
+- `FROM_EMAIL` - Sender email
+
+## Build Status
+✅ TypeScript: Passes
+✅ Build: Successful

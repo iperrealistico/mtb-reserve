@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { createZonedDate } from "@/lib/time";
+import { TenantSettings, BlockedDateRange } from "@/lib/tenants";
+import { isDateBlocked, isDateInBookingWindow } from "@/lib/blocked-dates";
 
 export interface TimeSlot {
     id: string; // "morning" | "afternoon" | "full-day"
@@ -12,21 +14,45 @@ export type AvailabilityResult = {
     [bikeTypeId: string]: number; // Available count
 };
 
+export interface AvailabilityCheck {
+    availability: AvailabilityResult;
+    dateBlocked: boolean;
+    outsideWindow: boolean;
+    reason?: string;
+}
+
 export async function getBikeAvailability(
     tenantSlug: string,
     date: Date,
     startTimeStr: string,
     endTimeStr: string,
     timezone: string = "Europe/Rome",
-    settings?: { blockedDates?: string[], minAdvanceHours?: number }
+    settings?: TenantSettings
 ): Promise<AvailabilityResult> {
-
-    // 0. Check Blocked Dates & Min Advance
-    // Note: We need the date string in YYYY-MM-DD to check blockedDates.
-    // Ideally we use the formatted date from the `date` object.
+    // Check blocked dates (both legacy and new ranges)
     const dateStr = date.toISOString().split('T')[0];
+
+    // Legacy blocked dates check
     if (settings?.blockedDates?.includes(dateStr)) {
-        return {}; // Return empty availability if blocked
+        return {};
+    }
+
+    // New blocked date ranges check
+    if (settings?.blockedDateRanges && isDateBlocked(date, settings.blockedDateRanges)) {
+        return {};
+    }
+
+    // Check advance notice window
+    const minDays = settings?.minAdvanceDays ?? 0;
+    const maxDays = settings?.maxAdvanceDays ?? 30;
+
+    const windowCheck = isDateInBookingWindow(date, minDays, maxDays, timezone);
+    if (!windowCheck.allowed) {
+        // Return empty availability if outside booking window
+        const bikeTypes = await db.bikeType.findMany({ where: { tenantSlug } });
+        const empty: AvailabilityResult = {};
+        bikeTypes.forEach(b => empty[b.id] = 0);
+        return empty;
     }
 
     // 1. Get all bike types for this tenant
@@ -38,12 +64,11 @@ export async function getBikeAvailability(
     const reqStart = createZonedDate(date, startTimeStr, timezone);
     const reqEnd = createZonedDate(date, endTimeStr, timezone);
 
-    // Check Min Advance
+    // Legacy: Check Min Advance Hours (for backward compatibility)
     if (settings?.minAdvanceHours && settings.minAdvanceHours > 0) {
         const now = new Date();
         const minStart = new Date(now.getTime() + settings.minAdvanceHours * 60 * 60 * 1000);
         if (reqStart < minStart) {
-            // Too soon
             const empty: AvailabilityResult = {};
             bikeTypes.forEach(b => empty[b.id] = 0);
             return empty;
@@ -84,4 +109,62 @@ export async function getBikeAvailability(
     }
 
     return availability;
+}
+
+/**
+ * Extended availability check that returns more detailed information
+ */
+export async function checkDateAvailability(
+    tenantSlug: string,
+    date: Date,
+    startTimeStr: string,
+    endTimeStr: string,
+    timezone: string = "Europe/Rome",
+    settings?: TenantSettings
+): Promise<AvailabilityCheck> {
+    const dateStr = date.toISOString().split('T')[0];
+
+    // Check if date is blocked
+    const isBlocked =
+        settings?.blockedDates?.includes(dateStr) ||
+        (settings?.blockedDateRanges && isDateBlocked(date, settings.blockedDateRanges));
+
+    if (isBlocked) {
+        return {
+            availability: {},
+            dateBlocked: true,
+            outsideWindow: false,
+            reason: "This date is not available for bookings",
+        };
+    }
+
+    // Check advance notice window
+    const minDays = settings?.minAdvanceDays ?? 0;
+    const maxDays = settings?.maxAdvanceDays ?? 30;
+
+    const windowCheck = isDateInBookingWindow(date, minDays, maxDays, timezone);
+    if (!windowCheck.allowed) {
+        return {
+            availability: {},
+            dateBlocked: false,
+            outsideWindow: true,
+            reason: windowCheck.reason,
+        };
+    }
+
+    // Get actual availability
+    const availability = await getBikeAvailability(
+        tenantSlug,
+        date,
+        startTimeStr,
+        endTimeStr,
+        timezone,
+        settings
+    );
+
+    return {
+        availability,
+        dateBlocked: false,
+        outsideWindow: false,
+    };
 }

@@ -63,6 +63,9 @@ model Booking {
   
   status            BookingStatus @default(PENDING_CONFIRM)
   
+  // Booking code for customers (generated on confirmation)
+  bookingCode       String?       @unique
+  
   startTime         DateTime
   endTime           DateTime
   
@@ -89,6 +92,7 @@ model Booking {
   @@index([tenantSlug])
   @@index([status])
   @@index([confirmationToken])
+  @@index([bookingCode])
 }
 
 model SuperAdmin {

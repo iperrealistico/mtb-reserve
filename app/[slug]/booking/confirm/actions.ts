@@ -1,13 +1,13 @@
 "use server";
 
-// ... imports
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
-// Removed verifyRecaptcha import
-
 import { logEvent } from "@/lib/events";
+import { generateUniqueBookingCode } from "@/lib/site-settings";
+import { getTenantSettings } from "@/lib/tenants";
+import { format } from "date-fns";
 
 
 export async function confirmBookingAction(_prevState: unknown, formData: FormData) {
@@ -21,13 +21,13 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
         return { success: false, error: "Too many attempts. Please try again later." };
     }
 
-    // ReCAPTCHA - REMOVED
-
     const token = formData.get("token") as string;
     const tos = formData.get("tos") as string;
+    const responsibility = formData.get("responsibility") as string;
 
     if (!token) return { success: false, error: "Invalid token" };
     if (tos !== "on") return { success: false, error: "You must accept the Terms and Conditions." };
+    if (responsibility !== "on") return { success: false, error: "You must confirm your responsibility declaration." };
 
     const booking = await db.booking.findUnique({
         where: { confirmationToken: token },
@@ -43,17 +43,19 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
     const now = new Date();
     const isExpired = booking.expiresAt && booking.expiresAt < now;
 
+    // Generate booking code
+    const bookingCode = await generateUniqueBookingCode();
+
     // ATOMIC TRANSACTION to re-verify and confirm
     try {
         await db.$transaction(async (tx) => {
-            // 1. Re-check availability if expired (if not expired, it was already accounted for)
-            // Actually, best to always re-check for total safety.
+            // 1. Re-check availability
             const aggregateResult = await tx.booking.aggregate({
                 _sum: { quantity: true },
                 where: {
                     tenantSlug: booking.tenantSlug,
                     bikeTypeId: booking.bikeTypeId,
-                    id: { not: booking.id }, // Exclude self
+                    id: { not: booking.id },
                     AND: [
                         { startTime: { lt: booking.endTime } },
                         { endTime: { gt: booking.startTime } },
@@ -77,30 +79,23 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                 throw new Error("This slot is no longer available. Your pending booking might have expired and been taken by someone else.");
             }
 
-            // 2. If expired, we still allow confirmation if stock is there, but maybe we should block it?
-            // "Link to Confirmation Page" -> "expires in 30 mins".
-            // If we are lenient, we allow it if stock is there.
-            // If we are strict, we block if expired. 
-            // The prompt says "Expired pending does not block availability". 
-            // It doesn't explicitly say expired cannot be confirmed if stock is available.
-            // But usually, an expired token should be invalid.
             if (isExpired) {
-                throw new Error("Your confirmation link has expired (30 min limit). please start a new booking.");
+                throw new Error("Your confirmation link has expired (30 min limit). Please start a new booking.");
             }
 
-            // 3. Update status
+            // 2. Update status and set booking code
             await tx.booking.update({
                 where: { id: booking.id },
                 data: {
                     status: "CONFIRMED",
                     tosAcceptedAt: new Date(),
+                    bookingCode,
                 }
             });
         });
     } catch (err: unknown) {
         return { success: false, error: (err as Error).message || "Confirmation failed" };
     }
-
 
     await logEvent({
         level: "INFO",
@@ -111,33 +106,91 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
         message: "Booking confirmed by customer",
         entityType: "Booking",
         entityId: booking.id,
-        metadata: { email: booking.customerEmail }
+        metadata: { email: booking.customerEmail, bookingCode }
     });
 
+    // Get tenant settings for pickup location
+    const settings = getTenantSettings(booking.tenant);
+    const pickupUrl = settings.pickupLocationUrl;
 
-    // Send "Booking Confirmed" email to User
+    // Calculate slot time
+    const dateStr = format(booking.startTime, "EEEE, MMMM d, yyyy");
+    const startTimeStr = format(booking.startTime, "h:mm a");
+    const endTimeStr = format(booking.endTime, "h:mm a");
+
+    // Send enhanced "Booking Confirmed" email to User
     await sendEmail({
         to: booking.customerEmail,
-        subject: `Booking Confirmed: ${booking.bikeType.name} at ${booking.tenant.name}`,
+        subject: `Booking Confirmed - ${bookingCode}`,
         html: `
-            <h1>Your booking is confirmed!</h1>
-            <p><strong>Date:</strong> ${booking.startTime.toDateString()}</p>
-            <p><strong>Bike:</strong> ${booking.bikeType.name}</p>
-            <p><strong>Quantity:</strong> ${booking.quantity}</p>
-            <p>See you there!</p>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 24px;">Your booking is confirmed</h1>
+                
+                <div style="background: #f7f7f7; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+                    <p style="font-size: 14px; color: #666; margin: 0 0 8px 0;">Booking Code</p>
+                    <p style="font-size: 28px; font-weight: bold; color: #1a1a1a; margin: 0; letter-spacing: 2px;">${bookingCode}</p>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Date</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${dateStr}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Time</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${startTimeStr} - ${endTimeStr}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Bike</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.bikeType.name}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Quantity</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.quantity}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Name</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.customerName}</td>
+                    </tr>
+                </table>
+                
+                ${pickupUrl ? `
+                <div style="background: #e7f5ff; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                    <p style="margin: 0 0 8px 0; font-weight: 500; color: #1a1a1a;">Pickup Location</p>
+                    <a href="${pickupUrl}" style="color: #0066cc; text-decoration: none;">Open in Google Maps</a>
+                </div>
+                ` : ''}
+                
+                <div style="background: #fff3cd; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                    <p style="margin: 0; color: #664d03; font-size: 14px;">
+                        <strong>Important:</strong> Please arrive at the pickup location on time. Payment is due on-site. No-shows may affect future booking privileges.
+                    </p>
+                </div>
+                
+                <p style="color: #666; font-size: 14px;">
+                    Questions? Contact ${booking.tenant.name} at ${booking.tenant.contactEmail}
+                </p>
+            </div>
         `
     });
 
     // Notify Admin
     await sendEmail({
         to: booking.tenant.contactEmail,
-        subject: `New Confirmed Booking: ${booking.customerName}`,
+        subject: `New Confirmed Booking: ${booking.customerName} [${bookingCode}]`,
         html: `
-            <p>User ${booking.customerName} has confirmed their booking.</p>
-            <p><strong>Date:</strong> ${booking.startTime.toDateString()}</p>
-            <p><strong>Bike:</strong> ${booking.bikeType.name} (x${booking.quantity})</p>
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                <h2>New Booking Confirmed</h2>
+                <p><strong>Booking Code:</strong> ${bookingCode}</p>
+                <p><strong>Customer:</strong> ${booking.customerName}</p>
+                <p><strong>Phone:</strong> ${booking.customerPhone}</p>
+                <p><strong>Email:</strong> ${booking.customerEmail}</p>
+                <p><strong>Date:</strong> ${dateStr}</p>
+                <p><strong>Time:</strong> ${startTimeStr} - ${endTimeStr}</p>
+                <p><strong>Bike:</strong> ${booking.bikeType.name} x ${booking.quantity}</p>
+            </div>
         `
     });
 
-    return { success: true, error: "" };
+    return { success: true, error: "", bookingCode };
 }
