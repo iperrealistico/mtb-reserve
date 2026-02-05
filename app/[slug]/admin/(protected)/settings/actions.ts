@@ -3,7 +3,8 @@
 import { db } from "@/lib/db";
 import { TenantSettings, DEFAULT_SLOTS, BlockedDateRange } from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
-import { ensureAuthenticated } from "@/lib/auth";
+import { ensureAuthenticated, verifyPassword, hashPassword } from "@/lib/auth";
+import { logEvent } from "@/lib/events";
 
 export async function updateTenantSettingsAction(slug: string, formData: FormData) {
     await ensureAuthenticated(slug);
@@ -95,4 +96,65 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
     } catch (error: unknown) {
         return { error: (error as Error).message || "Update failed" };
     }
+}
+
+export async function changePasswordAction(prevState: any, formData: FormData) {
+    const slug = formData.get("slug") as string;
+    const currentPassword = formData.get("currentPassword") as string;
+    const newPassword = formData.get("newPassword") as string;
+
+    const session = await ensureAuthenticated(slug);
+
+    if (!currentPassword || !newPassword) {
+        return { success: false, error: "Passwords are required" };
+    }
+
+    // Server-side validation (matching client)
+    const isValid = newPassword.length >= 8 &&
+        newPassword.length <= 32 &&
+        /[A-Z]/.test(newPassword) &&
+        /[0-9]/.test(newPassword) &&
+        /[!@#$%^&*(),.?":{}|<>]/.test(newPassword);
+
+    if (!isValid) {
+        return { success: false, error: "Password does not meet requirements" };
+    }
+
+    const tenant = await db.tenant.findUnique({
+        where: { slug }
+    });
+
+    if (!tenant) return { success: false, error: "Tenant not found" };
+
+    // Verify current
+    const isCorrect = await verifyPassword(currentPassword, tenant.adminPasswordHash);
+    if (!isCorrect) {
+        await logEvent({
+            level: "WARN",
+            tenantId: slug,
+            actorType: "TENANT_ADMIN",
+            actorId: slug,
+            eventType: "PASSWORD_CHANGE_FAILED",
+            message: "Failed password change attempt: Incorrect current password"
+        });
+        return { success: false, error: "Incorrect current password" };
+    }
+
+    // Update
+    const newHash = await hashPassword(newPassword);
+    await db.tenant.update({
+        where: { slug },
+        data: { adminPasswordHash: newHash }
+    });
+
+    await logEvent({
+        level: "INFO",
+        tenantId: slug,
+        actorType: "TENANT_ADMIN",
+        actorId: slug,
+        eventType: "PASSWORD_CHANGED",
+        message: "Tenant password updated successfully"
+    });
+
+    return { success: true, error: "" };
 }
