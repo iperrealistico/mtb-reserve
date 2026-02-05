@@ -260,18 +260,6 @@ export default function SettingsForm({
                         <p className="text-sm text-gray-400 italic">No blocked dates configured</p>
                     )}
                 </div>
-
-                {/* Legacy blocked dates (comma-separated) */}
-                <div className="space-y-2 pt-4 border-t">
-                    <Label htmlFor="blockedDates">Additional Blocked Dates (legacy)</Label>
-                    <Input
-                        id="blockedDates"
-                        name="blockedDates"
-                        placeholder="2024-12-25, 2025-01-01"
-                        defaultValue={initialSettings.blockedDates?.join(", ")}
-                    />
-                    <p className="text-xs text-gray-500">Comma-separated dates in YYYY-MM-DD format</p>
-                </div>
             </div>
 
             {/* Advance Notice */}

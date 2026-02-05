@@ -20,12 +20,6 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
 
     // Legacy fields for backward compat
     const minAdvanceHours = Number(formData.get("minAdvanceHours") || 0);
-    const blockedDatesStr = formData.get("blockedDates") as string;
-
-    // Parse legacy blocked dates from comma separated string
-    const blockedDates = blockedDatesStr
-        ? blockedDatesStr.split(",").map(d => d.trim()).filter(d => d.match(/^\d{4}-\d{2}-\d{2}$/))
-        : [];
 
     // Parse new blocked date ranges
     const blockedDateRangesStr = formData.get("blockedDateRanges") as string;
@@ -66,9 +60,7 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
         slots,
         fullDayEnabled,
         minAdvanceHours,
-        minAdvanceDays,
         maxAdvanceDays,
-        blockedDates,
         blockedDateRanges,
         pickupLocationUrl: pickupLocationUrl || undefined,
         content: {
