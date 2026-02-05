@@ -1,9 +1,10 @@
 "use server";
 
+// ... imports
 import { getSession, verifyPassword } from "@/lib/auth";
 import { getTenantBySlug } from "@/lib/tenants";
 import { rateLimit } from "@/lib/rate-limit";
-import { verifyRecaptcha } from "@/lib/recaptcha";
+// Removed verifyRecaptcha import
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -14,7 +15,7 @@ import { logEvent } from "@/lib/events";
 export async function loginAction(prevState: any, formData: FormData) {
     const slug = formData.get("slug") as string;
     const password = formData.get("password") as string;
-    const token = formData.get("recaptchaToken") as string;
+    // Removed token retrieval
 
     if (!slug || !password) {
         return { error: "Missing slug or password" };
@@ -30,11 +31,7 @@ export async function loginAction(prevState: any, formData: FormData) {
         return { error: "Too many login attempts. Please try again later." };
     }
 
-    // 2. ReCAPTCHA
-    const isHuman = await verifyRecaptcha(token);
-    if (!isHuman) {
-        return { error: "Security check failed. Please try again." };
-    }
+    // 2. ReCAPTCHA - REMOVED
 
 
     // 2. Fetch Tenant

@@ -23,10 +23,7 @@ vi.mock('resend', () => ({
     })),
 }));
 
-// Mock ReCAPTCHA
-vi.mock('@/lib/recaptcha', () => ({
-    verifyRecaptcha: vi.fn().mockResolvedValue(true),
-}));
+// Mock ReCAPTCHA - REMOVED
 
 // Mock IP helper
 vi.mock('@/lib/events', async (importOriginal) => {

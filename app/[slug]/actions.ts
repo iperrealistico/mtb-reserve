@@ -6,16 +6,17 @@ import { bookingSchema } from "@/lib/schemas";
 import { getTenantBySlug, getTenantSettings, TenantSlot, getComputedSlots } from "@/lib/tenants";
 import { randomUUID } from "crypto";
 
+// ... imports
 import { createZonedDate } from "@/lib/time";
 import { sendConfirmationLink } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
-import { verifyRecaptcha } from "@/lib/recaptcha";
-
+// Removed verifyRecaptcha import
 
 import { headers } from "next/headers";
 import { logEvent } from "@/lib/events";
 
 export async function getAvailabilityAction(slug: string, date: Date) {
+    // ... (unchanged)
     const tenant = await getTenantBySlug(slug);
     if (!tenant) return { slots: [], availability: {} }; // Validation?
 
@@ -53,12 +54,9 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
         return { error: "Too many booking attempts. Please try again later." };
     }
 
-    // 2. ReCAPTCHA
-    const token = formData.get("recaptchaToken") as string;
-    const isHuman = await verifyRecaptcha(token);
-    if (!isHuman) {
-        return { error: "Security check failed. Please try again." };
-    }
+    // 2. ReCAPTCHA - REMOVED
+
+    // Parse Form Data (manual parsing or use library helper)
 
     // Parse Form Data (manual parsing or use library helper)
     // For simplicity, we assume client sends JSON or structured data, but Server Actions receive FormData mostly.

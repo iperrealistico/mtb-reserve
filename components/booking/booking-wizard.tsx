@@ -1,10 +1,9 @@
-"use client";
-
-import { useState, useEffect, useRef } from "react";
+// ... (imports)
+import { useState, useEffect } from "react"; // Removed useRef if no longer used for other things
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import ReCAPTCHA from "react-google-recaptcha";
+// Removed ReCAPTCHA import
 import { format } from "date-fns";
 import { Loader2, Info, CheckCircle } from "lucide-react";
 import { Tenant, BikeType } from "@prisma/client";
@@ -49,7 +48,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
     const [selectedSlotId, setSelectedSlotId] = useState<string>("");
     const [selectedBikeTypeId, setSelectedBikeTypeId] = useState<string>("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    // Removed captchaToken state
 
     // Form Hook
     const { register, handleSubmit, formState: { errors }, watch } = useForm<FormValues>({
@@ -78,7 +77,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         }
     }, [date, tenant.slug]);
 
-    const recaptchaRef = useRef<ReCAPTCHA>(null);
+    // Removed recaptchaRef
 
     // Handlers
     const handleSlotSelect = (slotId: string) => {
@@ -91,49 +90,12 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         setStep("details");
     };
 
-    const onCaptchaChange = (token: string | null) => {
-        if (token) {
-            setCaptchaToken(token);
-            // We can't immediately submit here because we need the form data. 
-            // But wait, handleSubmit (react-hook-form) wraps onSubmit. 
-            // With invisible recaptcha, the flow is:
-            // 1. User clicks submit -> handleSubmit -> onSubmit (our function)
-            // 2. onSubmit calls recaptcha.execute()
-            // 3. Captcha verifies -> onChange(token)
-            // 4. We detect token change and trigger final submission? 
-            // OR: We can't easily pause the onSubmit.
+    // Removed onCaptchaChange, pendingDataRef, useEffect for token
 
-            // Better flow:
-            // Store the pending form data in state? Or just re-submit?
-            // Actually, react-google-recaptcha's execute() returns a promise for enterprise, but for v2 standard it's void and triggers onChange.
+    const onSubmit = async (data: FormValues) => {
+        if (!date || !selectedSlotId || !selectedBikeTypeId) return;
 
-            // Strategy: When token is received, trigger the server action if we are in "submitting" state.
-            // But we need the data.
-
-            // New Strategy:
-            // The button is type="submit". It triggers handleSubmit -> onSubmit.
-            // Inside onSubmit:
-            // If no token: preventDefault (implicit), setIsSubmitting(true), recaptchaRef.current.execute().
-            // If token exists: proceed to server action.
-            // When onChange fires: setToken. The re-render will update state. 
-            // AND we need to re-trigger the submission? 
-
-            // Since we can't easily re-trigger the form submit event with data, 
-            // let's use a ref to hold the pending data.
-        }
-    };
-
-    // Ref to hold pending data for post-captcha submission
-    const pendingDataRef = useRef<FormValues | null>(null);
-
-    // Effect to trigger submission once token is available
-    useEffect(() => {
-        if (captchaToken && pendingDataRef.current && isSubmitting) {
-            finalSubmit(pendingDataRef.current, captchaToken);
-        }
-    }, [captchaToken]);
-
-    const finalSubmit = async (data: FormValues, token: string) => {
+        setIsSubmitting(true);
         const formData = new FormData();
         formData.append("slug", tenant.slug);
         formData.append("date", date!.toISOString());
@@ -143,7 +105,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         formData.append("customerName", data.customerName);
         formData.append("customerEmail", data.customerEmail);
         formData.append("customerPhone", data.customerPhone);
-        formData.append("recaptchaToken", token);
+        // Removed recaptchaToken append
 
         console.log("[BookingWizard] Submitting booking request...", { slotId: selectedSlotId, bike: selectedBikeTypeId });
 
@@ -163,8 +125,6 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
             if (result.error) {
                 toast.error(result.error);
                 setIsSubmitting(false);
-                setCaptchaToken(null);
-                if (recaptchaRef.current) recaptchaRef.current.reset();
             } else {
                 setStep("confirmation");
                 window.scrollTo(0, 0);
@@ -174,37 +134,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
             console.error("[BookingWizard] Submission error:", err);
             toast.error(err.message || "An unexpected error occurred.");
             setIsSubmitting(false);
-            setCaptchaToken(null);
-            if (recaptchaRef.current) recaptchaRef.current.reset();
-        } finally {
-            pendingDataRef.current = null;
         }
-    };
-
-    const onSubmit = async (data: FormValues) => {
-        if (!date || !selectedSlotId || !selectedBikeTypeId) return;
-
-        setIsSubmitting(true);
-
-        if (!captchaToken) {
-            pendingDataRef.current = data;
-            recaptchaRef.current?.execute();
-
-            // Fallback: If captcha doesn't trigger within 5s, warn user or reset
-            setTimeout(() => {
-                if (pendingDataRef.current && isSubmitting) {
-                    // If we are still "submitting" after 5s and no token, something is stuck.
-                    console.warn("ReCAPTCHA timeout - taking too long.");
-                    setIsSubmitting(false);
-                    toast.error("Security check timed out. Please try again.");
-                }
-            }, 5000);
-            return;
-        }
-
-        // If we already have a token (rare in invisible mode unless re-submission), verify it's fresh?
-        // Usually safe to just submit.
-        await finalSubmit(data, captchaToken);
     };
 
     // Derived UI Data
@@ -418,22 +348,13 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 Payment is not required at this stage.
                                             </div>
 
-                                            <div className="absolute bottom-4 right-4 z-50">
-                                                <ReCAPTCHA
-                                                    ref={recaptchaRef}
-                                                    size="invisible"
-                                                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
-                                                    onChange={onCaptchaChange}
-                                                    onExpired={() => setIsSubmitting(false)}
-                                                    onError={() => { toast.error("Security check failed"); setIsSubmitting(false); }}
-                                                />
-                                            </div>
+                                            {/* Released reCAPTCHA component */}
 
                                             <Button
                                                 type="submit"
                                                 size="lg"
                                                 className="w-full text-lg"
-                                                disabled={isSubmitting} // Enabled by default, gated by click
+                                                disabled={isSubmitting}
                                                 isLoading={isSubmitting}
                                             >
                                                 Request Booking

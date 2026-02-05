@@ -22,7 +22,7 @@ The primary threats to MTBR/MTB Reserve are:
   - Login: Strict limits (e.g., 5 attempts/15min) with IP backoff.
   - Booking & Emails: Limits on creation and resends to prevent spam.
   - Password Reset: Limits to prevent enumeration and spam.
-- **reCAPTCHA v2/v3:** Integrated into all public forms (login, booking, reset) to distinguishing humans from bots.
+- **Vercel WAF / Firewall:** Relies on Vercel's platform-level protection and firewall rules to block malicious bots and automated attacks, replacing reCAPTCHA for a cleaner UX.
 
 ### Access Control
 - **No Plaintext Passwords:** Super-admins cannot view tenant passwords. Reset/Rotate only.
@@ -30,7 +30,7 @@ The primary threats to MTBR/MTB Reserve are:
 
 ### Infrastructure Security
 - **Security Headers:**
-  - `Content-Security-Policy`: Restricts script sources (Google reCAPTCHA, self).
+  - `Content-Security-Policy`: Restricts script sources (Self, Vercel).
   - `HSTS`: Enforced in production.
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY` (or SAMEORIGIN if needed).
@@ -40,17 +40,14 @@ The primary threats to MTBR/MTB Reserve are:
 
 | Variable | Description |
 | :--- | :--- |
-| `RECAPTCHA_SITE_KEY` | Public key for Google reCAPTCHA. |
-| `RECAPTCHA_SECRET_KEY` | Secret key for verification (server-side). |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | (Optional) Upstash/Vercel KV credentials for rate limiting. |
 | `DATABASE_URL` | Connection string for the primary database (PostgreSQL). |
 | `RESEND_API_KEY` | Key for sending transactional emails. |
 
 ## Secret Rotation
 
-1.  **reCAPTCHA Keys:** Generate new keys in Google Admin Console. Update Vercel env vars. Redeploy. Low impact if done quickly.
-2.  **Database URL:** Rotate credentials in database provider. Update Vercel env var immediately. Service interruption during update.
-3.  **Resend API Key:** Generate new key in Resend dashboard. Update Vercel.
+1.  **Database URL:** Rotate credentials in database provider. Update Vercel env var immediately. Service interruption during update.
+2.  **Resend API Key:** Generate new key in Resend dashboard. Update Vercel.
 
 ## Rate Limiting Configuration
 We utilize a durable store (Postgres or Vercel KV) to track request counts.

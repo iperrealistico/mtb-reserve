@@ -59,7 +59,7 @@
 - [ ] **Design System**: Established unified visual language (Airbnb-like).
 - [ ] **Components**: Standardized Button, Input, Modal, etc. across all apps.
 - [ ] **Sound & Motion**: Implemented micro-animations and sound feedback.
-- [ ] **reCAPTCHA**: "Gated Action" pattern implemented (smooth, button-driven).
+- [ ] **Security**: Relying on Vercel WAF/Firewall instead of client-side captcha for smoother UX.
 - [ ] **Bug Fixes**:
   - [ ] Reserve button "stuck" bug fixed (with instrumentation).
   - [ ] Calendar highlight bug fixed.
