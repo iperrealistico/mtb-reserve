@@ -61,7 +61,7 @@ export async function requestPasswordResetAction(formData: FormData) {
         // Fallback: headers host.
 
         // Let's assume process.env.NEXT_PUBLIC_BASE_URL for now or hardcode for MVP if missing.
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.mtbreserve.com";
         const link = `${baseUrl}/${slug}/admin/reset-password?token=${token}`;
 
         await sendEmail({

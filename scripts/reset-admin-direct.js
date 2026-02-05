@@ -4,14 +4,17 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
 async function run() {
-    const connectionString = process.env.DATABASE_URL;
+    const connectionString = process.env.DATABASE_URL.replace(/\?sslmode=.*$/, "").replace(/&sslmode=.*$/, "");
     if (!connectionString) {
         console.error("DATABASE_URL is missing");
         process.exit(1);
     }
 
     const pool = new Pool({
-        connectionString
+        connectionString,
+        ssl: {
+            rejectUnauthorized: false
+        }
     });
 
     const password = crypto.randomBytes(12).toString('hex');

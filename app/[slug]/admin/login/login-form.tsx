@@ -104,7 +104,7 @@ export default function LoginForm({ slug }: { slug: string }) {
                     </div>
                 )}
 
-                <div className="absolute bottom-0 right-0 opacity-0 pointer-events-none">
+                <div className="absolute bottom-4 right-4 z-50">
                     <ReCAPTCHA
                         ref={recaptchaRef}
                         size="invisible"

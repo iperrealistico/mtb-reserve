@@ -5,12 +5,39 @@ import { superAdminLoginAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { useState, useRef, useEffect } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
+
 const initialState = {
     error: "",
 };
 
 export default function SuperAdminLoginPage() {
     const [state, formAction, isPending] = useActionState(superAdminLoginAction, initialState);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const recaptchaRef = useRef<ReCAPTCHA>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+
+    const handleLoginClick = (e: React.MouseEvent) => {
+        if (!captchaToken) {
+            e.preventDefault();
+            setIsVerifying(true);
+            recaptchaRef.current?.execute();
+        }
+    };
+
+    const onCaptchaChange = (token: string | null) => {
+        if (token) {
+            setCaptchaToken(token);
+        }
+    };
+
+    useEffect(() => {
+        if (captchaToken && isVerifying && formRef.current) {
+            formRef.current.requestSubmit();
+        }
+    }, [captchaToken, isVerifying]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -23,7 +50,7 @@ export default function SuperAdminLoginPage() {
                         Restricted Access
                     </p>
                 </div>
-                <form className="mt-8 space-y-6" action={formAction}>
+                <form ref={formRef} className="mt-8 space-y-6" action={formAction}>
                     <div className="rounded-md shadow-sm">
                         <div className="space-y-2">
                             <label htmlFor="password" className="sr-only">
@@ -47,12 +74,24 @@ export default function SuperAdminLoginPage() {
                         </div>
                     )}
 
+                    <div className="flex justify-center my-4">
+                        <ReCAPTCHA
+                            ref={recaptchaRef}
+                            size="invisible"
+                            sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+                            onChange={onCaptchaChange}
+                            onError={() => setIsVerifying(false)}
+                        />
+                    </div>
+                    <input type="hidden" name="recaptchaToken" value={captchaToken || ""} />
+
                     <div>
                         <Button
                             type="submit"
-                            disabled={isPending}
-                            isLoading={isPending}
+                            disabled={isPending || isVerifying}
+                            isLoading={isPending || isVerifying}
                             className="w-full text-lg h-14"
+                            onClick={handleLoginClick}
                         >
                             Sign in
                         </Button>

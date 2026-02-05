@@ -7,11 +7,20 @@ import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import { logEvent } from "@/lib/events";
 
+import { verifyRecaptcha } from "@/lib/recaptcha";
+
 export async function superAdminLoginAction(prevState: any, formData: FormData) {
     const password = formData.get("password") as string;
+    const recaptchaToken = formData.get("recaptchaToken") as string;
 
     if (!password) {
         return { error: "Password is required" };
+    }
+
+    // Verify ReCAPTCHA
+    const isCaptchaValid = await verifyRecaptcha(recaptchaToken);
+    if (!isCaptchaValid) {
+        return { error: "Security check failed. Please try again." };
     }
 
     // Rate Limit by IP (Stricter for password only)

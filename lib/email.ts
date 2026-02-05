@@ -11,7 +11,7 @@ const IS_DEV = process.env.NODE_ENV === "development" && process.env.EMAIL_DISAB
 const SHOULD_LOG = process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY;
 
 export async function sendConfirmationLink(to: string, slug: string, token: string) {
-    const link = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/${slug}/booking/confirm/${token}`;
+    const link = `${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/booking/confirm/${token}`;
 
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL] To: ${to} | Subject: Confirm your Booking | Link: ${link}`);
