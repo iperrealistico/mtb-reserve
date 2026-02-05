@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createBikeTypeAction, updateBikeTypeAction, deleteBikeTypeAction } from "./actions";
 import { Trash2, Save, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import DeleteBikeForm from "./delete-bike-form";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
@@ -121,13 +122,7 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                                     {bike.notes || <span className="text-gray-300">No notes</span>}
                                 </div>
                                 <div className="col-span-2 text-right">
-                                    <form action={deleteBikeTypeAction as any} onSubmit={(e) => !confirm("Are you sure? This will delete all associated bookings.") && e.preventDefault()}>
-                                        <input type="hidden" name="id" value={bike.id} />
-                                        <input type="hidden" name="slug" value={slug} />
-                                        <Button size="sm" type="submit" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </form>
+                                    <DeleteBikeForm id={bike.id} slug={slug} />
                                 </div>
                             </div>
                         ))}
@@ -154,6 +149,6 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                     </form>
                 </CardContent>
             </Card>
-        </div>
+        </div >
     );
 }
