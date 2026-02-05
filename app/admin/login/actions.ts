@@ -30,6 +30,21 @@ export async function superAdminLoginAction(prevState: any, formData: FormData) 
         return { error: "Too many login attempts. Please try again later." };
     }
 
+    // Debug DB
+    const dbUrl = process.env.DATABASE_URL;
+    console.log("[SuperAdminLogin] Checking DB...", {
+        hasUrl: !!dbUrl,
+        sslMode: process.env.NODE_ENV === 'production' ? 'ON' : 'OFF (Local Fix Applied)'
+    });
+
+    try {
+        const count = await db.superAdmin.count();
+        console.log("[SuperAdminLogin] Total Super Adms in DB:", count);
+    } catch (e: any) {
+        console.error("[SuperAdminLogin] DB Count Failed:", e);
+        return { error: `Database Connection Error: ${e.message}` };
+    }
+
     // Find the single super admin
     const admin = await db.superAdmin.findFirst();
 

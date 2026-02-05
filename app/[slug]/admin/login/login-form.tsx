@@ -28,6 +28,15 @@ export default function LoginForm({ slug }: { slug: string }) {
             e.preventDefault();
             setIsVerifying(true);
             recaptchaRef.current?.execute();
+
+            // Timeout Guard
+            setTimeout(() => {
+                if (!captchaToken && isVerifying) {
+                    setIsVerifying(false);
+                    // toast.error not available here easily? It's a client component, use sonner if available or just reset
+                    console.warn("Login captcha timeout");
+                }
+            }, 5000);
         }
     };
 
@@ -95,7 +104,7 @@ export default function LoginForm({ slug }: { slug: string }) {
                     </div>
                 )}
 
-                <div className="flex justify-center my-4 overflow-hidden max-w-full h-0">
+                <div className="absolute opacity-0 pointer-events-none -z-10">
                     <ReCAPTCHA
                         ref={recaptchaRef}
                         size="invisible"

@@ -189,6 +189,16 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         if (!captchaToken) {
             pendingDataRef.current = data;
             recaptchaRef.current?.execute();
+
+            // Fallback: If captcha doesn't trigger within 5s, warn user or reset
+            setTimeout(() => {
+                if (pendingDataRef.current && isSubmitting) {
+                    // If we are still "submitting" after 5s and no token, something is stuck.
+                    console.warn("ReCAPTCHA timeout - taking too long.");
+                    setIsSubmitting(false);
+                    toast.error("Security check timed out. Please try again.");
+                }
+            }, 5000);
             return;
         }
 
@@ -408,7 +418,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 Payment is not required at this stage.
                                             </div>
 
-                                            <div className="flex justify-center my-4 overflow-hidden max-w-full h-0">
+                                            <div className="absolute opacity-0 pointer-events-none -z-10">
                                                 <ReCAPTCHA
                                                     ref={recaptchaRef}
                                                     size="invisible"
