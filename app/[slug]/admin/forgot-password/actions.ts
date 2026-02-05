@@ -1,5 +1,6 @@
 "use server";
 
+// ... imports
 import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { addMinutes } from "date-fns";
@@ -7,7 +8,7 @@ import { redirect } from "next/navigation";
 import { sendEmail } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
-import { verifyRecaptcha } from "@/lib/recaptcha";
+// Removed verifyRecaptcha import
 
 export async function requestPasswordResetAction(formData: FormData) {
     const slug = formData.get("slug") as string;
@@ -27,12 +28,7 @@ export async function requestPasswordResetAction(formData: FormData) {
         return redirect(`/${slug}/admin/forgot-password?error=Too many requests. Try again later.`);
     }
 
-    // 2. ReCAPTCHA
-    const captchaToken = formData.get("recaptchaToken") as string;
-    const isHuman = await verifyRecaptcha(captchaToken);
-    if (!isHuman) {
-        return redirect(`/${slug}/admin/forgot-password?error=Security check failed. Please try again.`);
-    }
+    // 2. ReCAPTCHA - REMOVED
 
     // 2. Find Tenant
     const tenant = await db.tenant.findUnique({

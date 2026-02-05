@@ -1,10 +1,11 @@
 "use server";
 
+// ... imports
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
-import { verifyRecaptcha } from "@/lib/recaptcha";
+// Removed verifyRecaptcha import
 
 import { logEvent } from "@/lib/events";
 
@@ -20,12 +21,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
         return { success: false, error: "Too many attempts. Please try again later." };
     }
 
-    // ReCAPTCHA
-    const recaptchaToken = formData.get("recaptchaToken") as string;
-    const isHuman = await verifyRecaptcha(recaptchaToken);
-    if (!isHuman) {
-        return { success: false, error: "Security check failed. Please try again." };
-    }
+    // ReCAPTCHA - REMOVED
 
     const token = formData.get("token") as string;
     const tos = formData.get("tos") as string;
