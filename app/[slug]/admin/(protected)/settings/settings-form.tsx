@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, Plus, Calendar } from "lucide-react";
+import { Trash2, Plus, Calendar, AlertCircle, Clock } from "lucide-react";
 import { updateTenantSettingsAction } from "./actions";
 import { TenantSettings, TenantSlot, BlockedDateRange } from "@/lib/tenants";
 import { toast } from "sonner";
+import { useMemo } from "react";
 
 export default function SettingsForm({
     slug,
@@ -27,8 +28,35 @@ export default function SettingsForm({
     );
     const [loading, setLoading] = useState(false);
 
+    // Overlap Detection Logic
+    const overlaps = useMemo(() => {
+        const sorted = [...slots]
+            .filter(s => s.start && s.end)
+            .sort((a, b) => a.start.localeCompare(b.start));
+
+        const issues: { id1: string, id2: string }[] = [];
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+            const current = sorted[i];
+            const next = sorted[i + 1];
+
+            if (next.start < current.end) {
+                issues.push({ id1: current.id, id2: next.id });
+            }
+        }
+        return issues;
+    }, [slots]);
+
+    const hasOverlaps = overlaps.length > 0;
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (hasOverlaps) {
+            toast.error("Please fix overlapping time slots before saving.");
+            return;
+        }
+
         setLoading(true);
 
         const formData = new FormData(e.currentTarget);
@@ -163,38 +191,78 @@ export default function SettingsForm({
                 </div>
 
                 <div className="space-y-4">
-                    {slots.map((slot, index) => (
-                        <div key={slot.id} className="flex gap-4 items-end border p-4 rounded-lg bg-gray-50">
-                            <div className="space-y-1 flex-1">
-                                <Label>Label</Label>
-                                <Input
-                                    value={slot.label}
-                                    placeholder="e.g. Morning Selection"
-                                    onChange={(e) => updateSlot(index, "label", e.target.value)}
-                                />
+                    {slots.map((slot, index) => {
+                        const isOverlapping = overlaps.some(o => o.id1 === slot.id || o.id2 === slot.id);
+                        return (
+                            <div
+                                key={slot.id}
+                                className={`flex gap-4 items-end border p-4 rounded-xl transition-all duration-300 ${isOverlapping
+                                        ? "bg-red-50 border-red-200 shadow-sm ring-1 ring-red-100"
+                                        : "bg-gray-50 border-gray-100"
+                                    }`}
+                            >
+                                <div className="space-y-1 flex-1">
+                                    <Label className={isOverlapping ? "text-red-700" : ""}>Label</Label>
+                                    <Input
+                                        value={slot.label}
+                                        placeholder="e.g. Morning Selection"
+                                        onChange={(e) => updateSlot(index, "label", e.target.value)}
+                                        className={isOverlapping ? "border-red-200 focus:ring-red-500" : ""}
+                                    />
+                                </div>
+                                <div className="space-y-1 w-32">
+                                    <Label className={isOverlapping ? "text-red-700" : ""}>Start</Label>
+                                    <div className="relative">
+                                        <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isOverlapping ? "text-red-400" : "text-gray-400"}`} />
+                                        <Input
+                                            type="time"
+                                            value={slot.start}
+                                            onChange={(e) => updateSlot(index, "start", e.target.value)}
+                                            className={`pl-10 ${isOverlapping ? "border-red-200 focus:ring-red-500" : ""}`}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1 w-32">
+                                    <Label className={isOverlapping ? "text-red-700" : ""}>End</Label>
+                                    <div className="relative">
+                                        <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isOverlapping ? "text-red-400" : "text-gray-400"}`} />
+                                        <Input
+                                            type="time"
+                                            value={slot.end}
+                                            onChange={(e) => updateSlot(index, "end", e.target.value)}
+                                            className={`pl-10 ${isOverlapping ? "border-red-200 focus:ring-red-500" : ""}`}
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeSlot(index)}
+                                    className="hover:bg-red-100 hover:text-red-600 rounded-lg transition-colors"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
                             </div>
-                            <div className="space-y-1 w-24">
-                                <Label>Start</Label>
-                                <Input
-                                    type="time"
-                                    value={slot.start}
-                                    onChange={(e) => updateSlot(index, "start", e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-1 w-24">
-                                <Label>End</Label>
-                                <Input
-                                    type="time"
-                                    value={slot.end}
-                                    onChange={(e) => updateSlot(index, "end", e.target.value)}
-                                />
-                            </div>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeSlot(index)}>
-                                <Trash2 className="w-4 h-4 text-gray-500" />
-                            </Button>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
+
+                {/* Overlap Warning */}
+                {hasOverlaps && (
+                    <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="p-2 bg-red-100 rounded-full">
+                            <AlertCircle className="w-5 h-5 text-red-600" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-red-800">Time Slot Overlap Detected</h4>
+                            <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                                You have time slots that overlap with each other. Please adjust the start or end times
+                                to ensure each slot represents a unique time period.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-2 pt-2">
                     <input
@@ -202,9 +270,9 @@ export default function SettingsForm({
                         id="fullDayEnabled"
                         checked={fullDayEnabled}
                         onChange={(e) => setFullDayEnabled(e.target.checked)}
-                        className="rounded"
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <Label htmlFor="fullDayEnabled" className="text-sm font-normal">
+                    <Label htmlFor="fullDayEnabled" className="text-sm font-medium text-gray-700">
                         Enable full day option (combines all slots)
                     </Label>
                 </div>
@@ -293,7 +361,12 @@ export default function SettingsForm({
                 </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            <Button
+                type="submit"
+                disabled={loading || hasOverlaps}
+                className={`w-full sm:w-auto transition-all duration-300 ${hasOverlaps ? "opacity-50 grayscale cursor-not-allowed" : ""
+                    }`}
+            >
                 {loading ? "Saving..." : "Save Changes"}
             </Button>
         </form>
