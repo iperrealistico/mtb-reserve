@@ -18,8 +18,9 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
     const name = formData.get("name") as string;
     const slug = formData.get("slug") as string;
     const contactEmail = formData.get("contactEmail") as string;
+    const registrationEmail = formData.get("registrationEmail") as string;
 
-    if (!name || !slug || !contactEmail) {
+    if (!name || !slug || !contactEmail || !registrationEmail) {
         return { success: false, error: "All fields are required" };
     }
 
@@ -38,6 +39,7 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
                 slug,
                 name,
                 contactEmail,
+                registrationEmail,
                 adminPasswordHash: passwordHash,
                 timezone: "Europe/Rome",
                 settings: {},
@@ -52,7 +54,7 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
                 <h1>Welcome, ${name}!</h1>
                 <p>Your tenant account has been created.</p>
                 <p><strong>Admin Portal:</strong> <a href="${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/admin/login">${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/admin/login</a></p>
-                <p><strong>Username:</strong> ${contactEmail} (or manage via this email)</p>
+                <p><strong>Username:</strong> ${registrationEmail} (or manage via this email)</p>
                 <p><strong>Password:</strong> ${password}</p>
                 <p>Please log in and change your password immediately.</p>
             `
@@ -115,13 +117,13 @@ export async function sendTenantEmailAction(prevState: any, formData: FormData):
 export async function updateTenantDetailsAction(prevState: any, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
     const name = formData.get("name") as string;
-    const contactEmail = formData.get("contactEmail") as string;
+    const registrationEmail = formData.get("registrationEmail") as string;
 
-    if (!name || !contactEmail) return { success: false, error: "Fields required" };
+    if (!name || !registrationEmail) return { success: false, error: "Fields required" };
 
     await db.tenant.update({
         where: { slug },
-        data: { name, contactEmail }
+        data: { name, registrationEmail }
     });
 
     revalidatePath(`/admin/tenants/${slug}`);
@@ -146,7 +148,7 @@ export async function resetTenantPasswordAdminAction(prevState: any, formData: F
 
     // Email the new password
     await sendEmail({
-        to: tenant.contactEmail,
+        to: tenant.registrationEmail,
         subject: `Security Alert: Admin Password Reset`,
         html: `
             <h1>Password Reset</h1>

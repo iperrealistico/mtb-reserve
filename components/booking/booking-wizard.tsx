@@ -165,6 +165,15 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                 {/* Main Content Area */}
                 <div className="lg:col-span-8 space-y-8 min-h-[400px]">
 
+                    {tenant.bikeTypes.length === 0 && (
+                        <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded-r-xl">
+                            <h3 className="text-lg font-bold text-orange-800 mb-2">No Bikes Available</h3>
+                            <p className="text-orange-700">
+                                We currently don&apos;t have any equipment listed for booking. Please check back later or contact us directly.
+                            </p>
+                        </div>
+                    )}
+
                     {step === "confirmation" ? (
                         <div className="bg-white rounded-2xl p-8 text-center shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-gray-100">
                             <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">

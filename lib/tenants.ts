@@ -45,8 +45,8 @@ export interface TenantSettings {
 
 // Default Slots if none configured
 export const DEFAULT_SLOTS: TenantSlot[] = [
-    { id: "morning", label: "Morning (09:00 - 13:00)", start: "09:00", end: "13:00" },
-    { id: "afternoon", label: "Afternoon (14:00 - 18:00)", start: "14:00", end: "18:00" },
+    { id: "morning", label: "Morning", start: "09:00", end: "13:00" },
+    { id: "evening", label: "Evening", start: "14:00", end: "18:00" },
 ];
 
 export const getTenantBySlug = cache(async (slug: string) => {
@@ -94,7 +94,7 @@ export function getComputedSlots(tenant: { settings: unknown }): TenantSlot[] {
 
         slots.push({
             id: "full-day",
-            label: `Full Day (${minStart} - ${maxEnd})`,
+            label: `All Day (${minStart} - ${maxEnd})`,
             start: minStart,
             end: maxEnd
         });

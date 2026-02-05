@@ -3,6 +3,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { getSiteSettings } from "@/lib/site-settings";
+import GlobalClickListener from "@/components/GlobalClickListener";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -46,6 +47,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <GlobalClickListener />
       </body>
     </html>
   );

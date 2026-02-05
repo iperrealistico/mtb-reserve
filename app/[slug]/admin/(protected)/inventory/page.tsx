@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createBikeTypeAction, updateBikeTypeAction } from "./actions";
+import { createBikeTypeAction, updateBikeTypeAction, deleteBikeTypeAction } from "./actions";
+import { Trash2, Save, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
@@ -87,26 +89,47 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                     {/* Re-rendering properly below with correct structure */}
                     <div className="bg-white divide-y divide-gray-200">
                         {bikeTypes.map((bike: any) => (
-                            <form key={bike.id} action={updateBikeTypeAction as unknown as (formData: FormData) => void} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50">
-                                <input type="hidden" name="id" value={bike.id} />
-                                <input type="hidden" name="slug" value={slug} />
-
-                                <div className="col-span-4 font-medium text-sm text-gray-900">{bike.name}</div>
-                                <div className="col-span-2">
-                                    <Input name="totalStock" type="number" defaultValue={bike.totalStock} className="h-8 w-20" min={0} />
-                                    <span className="text-xs text-gray-400">Total</span>
+                            <div key={bike.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 group">
+                                <div className="col-span-3">
+                                    <div className="font-medium text-sm text-gray-900">{bike.name}</div>
+                                    <div className="text-xs text-gray-400">ID: {bike.id}</div>
                                 </div>
                                 <div className="col-span-2">
-                                    <Input name="brokenCount" type="number" defaultValue={bike.brokenCount} className="h-8 w-20" min={0} />
-                                    <span className="text-xs text-gray-400">Broken</span>
+                                    <form action={updateBikeTypeAction as any} className="flex flex-col gap-1">
+                                        <input type="hidden" name="id" value={bike.id} />
+                                        <input type="hidden" name="slug" value={slug} />
+                                        <div className="flex items-center gap-2">
+                                            <Input name="totalStock" type="number" defaultValue={bike.totalStock} className="h-8 w-16" min={0} />
+                                            <span className="text-xs text-gray-400">Total</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Input name="brokenCount" type="number" defaultValue={bike.brokenCount} className="h-8 w-16" min={0} />
+                                            <span className="text-xs text-gray-400">Broken</span>
+                                        </div>
+                                        <Button size="sm" type="submit" variant="ghost" className="h-7 text-xs w-full mt-1">
+                                            <Save className="w-3 h-3 mr-1" /> Update
+                                        </Button>
+                                    </form>
                                 </div>
-                                <div className="col-span-2 text-sm text-gray-500">
-                                    Avail: <span className="font-bold text-gray-900">{Math.max(0, bike.totalStock - bike.brokenCount)}</span>
+                                <div className="col-span-2 text-sm text-gray-500 text-center">
+                                    <div className="text-xs text-gray-400 mb-1">Available</div>
+                                    <Badge variant={(bike.totalStock - bike.brokenCount) > 0 ? "outline" : "secondary"}>
+                                        {Math.max(0, bike.totalStock - bike.brokenCount)}
+                                    </Badge>
+                                </div>
+                                <div className="col-span-3 text-sm text-gray-500 italic px-2">
+                                    {bike.notes || <span className="text-gray-300">No notes</span>}
                                 </div>
                                 <div className="col-span-2 text-right">
-                                    <Button size="sm" type="submit">Update</Button>
+                                    <form action={deleteBikeTypeAction as any} onSubmit={(e) => !confirm("Are you sure? This will delete all associated bookings.") && e.preventDefault()}>
+                                        <input type="hidden" name="id" value={bike.id} />
+                                        <input type="hidden" name="slug" value={slug} />
+                                        <Button size="sm" type="submit" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </form>
                                 </div>
-                            </form>
+                            </div>
                         ))}
                     </div>
                 </div>

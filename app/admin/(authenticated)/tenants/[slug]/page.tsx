@@ -41,7 +41,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
                 <TenantDetailForm
                     slug={slug}
                     initialName={tenant.name}
-                    initialEmail={tenant.contactEmail}
+                    initialRegistrationEmail={tenant.registrationEmail}
                 />
             </div>
 
@@ -49,7 +49,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
             <TenantPasswordReset slug={slug} />
 
             {/* Emailer */}
-            <TenantEmailer slug={slug} adminEmail={tenant.contactEmail} />
+            <TenantEmailer slug={slug} adminEmail={tenant.registrationEmail} />
 
             {/* Impersonation */}
             <div className="bg-white p-6 shadow rounded-lg">

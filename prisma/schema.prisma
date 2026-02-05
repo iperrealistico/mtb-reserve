@@ -13,6 +13,7 @@ model Tenant {
   name                String
   adminPasswordHash   String
   contactEmail        String
+  registrationEmail   String   @default("")
   contactPhone        String?
   address             String?
   timezone            String   @default("Europe/Rome")

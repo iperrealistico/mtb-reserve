@@ -44,3 +44,17 @@ export async function updateBikeTypeAction(formData: FormData) {
     revalidatePath(`/${slug}/admin/inventory`);
     revalidatePath(`/${slug}`); // Update availability on public page
 }
+export async function deleteBikeTypeAction(formData: FormData) {
+    const slug = formData.get("slug") as string;
+    await ensureAuthenticated(slug);
+
+    const id = formData.get("id") as string;
+    if (!id) return { error: "Missing ID" };
+
+    await db.bikeType.delete({
+        where: { id }
+    });
+
+    revalidatePath(`/${slug}/admin/inventory`);
+    revalidatePath(`/${slug}`);
+}

@@ -35,8 +35,8 @@ export async function requestPasswordResetAction(formData: FormData) {
         where: { slug },
     });
 
-    // 3. Verify Email matches Contact Email
-    if (tenant && tenant.contactEmail.toLowerCase() === email.toLowerCase()) {
+    // 3. Verify Email matches Registration Email
+    if (tenant && tenant.registrationEmail.toLowerCase() === email.toLowerCase()) {
         // 4. Generate Token
         const token = randomUUID();
         const expiresAt = addMinutes(new Date(), 15); // 15 min expiry

@@ -176,7 +176,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
 
     // Notify Admin
     await sendEmail({
-        to: booking.tenant.contactEmail,
+        to: booking.tenant.registrationEmail,
         subject: `New Confirmed Booking: ${booking.customerName} [${bookingCode}]`,
         html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">

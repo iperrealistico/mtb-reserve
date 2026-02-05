@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 export default function TenantDetailForm({
     slug,
     initialName,
-    initialEmail
+    initialRegistrationEmail
 }: {
     slug: string,
     initialName: string,
-    initialEmail: string
+    initialRegistrationEmail: string
 }) {
     const [state, formAction, isPending] = useActionState(updateTenantDetailsAction, { success: false, error: "" });
 
@@ -27,8 +27,9 @@ export default function TenantDetailForm({
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="contactEmail">Contact Email</Label>
-                <Input id="contactEmail" name="contactEmail" type="email" defaultValue={initialEmail} />
+                <Label htmlFor="registrationEmail">Registration Email</Label>
+                <Input id="registrationEmail" name="registrationEmail" type="email" defaultValue={initialRegistrationEmail} />
+                <p className="text-xs text-gray-500">This email is used for login and system notifications.</p>
             </div>
 
             {state.success && <div className="text-green-600 text-sm">Updated successfully</div>}
