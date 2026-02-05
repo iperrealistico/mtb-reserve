@@ -60,6 +60,7 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
         slots,
         fullDayEnabled,
         minAdvanceHours,
+        minAdvanceDays,
         maxAdvanceDays,
         blockedDateRanges,
         pickupLocationUrl: pickupLocationUrl || undefined,
