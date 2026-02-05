@@ -8,14 +8,13 @@ import { headers } from "next/headers";
 import { logEvent } from "@/lib/events";
 
 export async function superAdminLoginAction(prevState: any, formData: FormData) {
-    const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    if (!email || !password) {
-        return { error: "Email and password are required" };
+    if (!password) {
+        return { error: "Password is required" };
     }
 
-    // Rate Limit by IP
+    // Rate Limit by IP (Stricter for password only)
     const headerList = await headers();
     const ip = headerList.get("x-forwarded-for") || "127.0.0.1";
 
@@ -31,20 +30,13 @@ export async function superAdminLoginAction(prevState: any, formData: FormData) 
         return { error: "Too many login attempts. Please try again later." };
     }
 
-    const admin = await db.superAdmin.findUnique({
-        where: { email },
-    });
+    // Find the single super admin
+    const admin = await db.superAdmin.findFirst();
 
     if (!admin) {
-        // Generic error
-        await logEvent({
-            level: "WARN",
-            actorType: "GUEST",
-            eventType: "LOGIN_FAILURE",
-            message: "Super admin login failed: user not found",
-            metadata: { email }
-        });
-        return { error: "Invalid credentials" };
+        // No admin setup? This is critical.
+        // Should we create one? No, that's unsafe.
+        return { error: "System Configuration Error: No Super Admin found." };
     }
 
     const isValid = await verifyPassword(password, admin.passwordHash);

@@ -4,7 +4,7 @@ import { cancelBookingAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarDays, Users, AlertCircle } from "lucide-react";
+import { CalendarDays, Users, AlertCircle, Phone } from "lucide-react";
 import { Booking, BikeType } from "@prisma/client";
 
 export default async function DashboardPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -109,12 +109,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ slug
                                         <div className="text-2xl font-bold text-gray-900">
                                             {format(booking.startTime, "HH:mm")}
                                         </div>
-                                        <Badge variant="outline" className={`
-                                            w-fit text-sm py-1 px-3
-                                            ${booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800 border-green-200' :
+                                        <Badge variant="outline" className={`w-fit text-sm py-1 px-3 ${booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-800 border-green-200' :
                                                 booking.status === 'PENDING_CONFIRM' ? 'bg-orange-100 text-orange-800 border-orange-200' :
-                                                    booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-gray-100'}
-                                        `}>
+                                                    booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-gray-100'
+                                            }`}>
                                             {booking.status}
                                         </Badge>
                                     </div>
@@ -126,7 +124,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ slug
                                             {booking.quantity}x {booking.bikeType.name}
                                         </p>
                                         <p className="text-gray-500 flex items-center gap-2 mt-1">
-                                            📞 {booking.customerPhone}
+                                            <Phone className="w-4 h-4 inline mr-1" /> {booking.customerPhone}
                                         </p>
                                     </div>
 

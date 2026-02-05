@@ -14,7 +14,7 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
     const link = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/${slug}/booking/confirm/${token}`;
 
     if (SHOULD_LOG) {
-        console.log(`[📧 MOCK EMAIL] To: ${to} | Subject: Confirm your Booking | Link: ${link}`);
+        console.log(`[MOCK EMAIL] To: ${to} | Subject: Confirm your Booking | Link: ${link}`);
         await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: "Mock confirmation email", metadata: { to } });
         return { success: true };
     }
@@ -52,7 +52,7 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
 
 export async function sendBookingRecap(to: string, booking: any) {
     if (SHOULD_LOG) {
-        console.log(`[📧 MOCK EMAIL] To: ${to} | Subject: Booking Confirmed | ID: ${booking.id}`);
+        console.log(`[MOCK EMAIL] To: ${to} | Subject: Booking Confirmed | ID: ${booking.id}`);
         await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: "Mock recap email", metadata: { to } });
         return { success: true };
     }
@@ -61,7 +61,7 @@ export async function sendBookingRecap(to: string, booking: any) {
         const { data, error } = await resend.emails.send({
             from: FROM_EMAIL,
             to,
-            subject: "Booking Confirmed! 🚴",
+            subject: "Booking Confirmed!",
             html: `
                 <h1>Ready to ride!</h1>
                 <p>Your booking is confirmed.</p>
@@ -97,7 +97,7 @@ export async function sendBookingRecap(to: string, booking: any) {
 
 export async function sendAdminNotification(tenantEmail: string, booking: any) {
     if (SHOULD_LOG) {
-        console.log(`[📧 MOCK EMAIL ADMIN] To: ${tenantEmail} | Subject: New Booking!`);
+        console.log(`[MOCK EMAIL ADMIN] To: ${tenantEmail} | Subject: New Booking!`);
         return { success: true };
     }
 
@@ -140,7 +140,7 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
 
 export async function sendEmail({ to, subject, html }: { to: string, subject: string, html: string }) {
     if (SHOULD_LOG) {
-        console.log(`[📧 MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+        console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
         await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock email: ${subject}`, metadata: { to } });
         return { success: true };
     }

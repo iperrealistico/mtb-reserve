@@ -31,15 +31,12 @@ IP_SALT="random_string_change_me_in_prod"
 
 To manage tenants (shops), you need a Super Admin account.
 
-1.  **Create Super Admin**:
-    Run the provided script to seed the first super admin user.
+1.  **Create / Reset Super Admin**:
+    Run the provided script to seed or reset the super admin user.
     ```bash
-    npx tsx scripts/create-super-admin.ts <email> <password>
+    node scripts/reset-admin-password.js
     ```
-    Example:
-    ```bash
-    npx tsx scripts/create-super-admin.ts admin@mtb.com securePass123
-    ```
+    This will generate a secure random password and display it once.
 
 2.  **Access Admin Panel**:
     Navigate to `/admin/login`.

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import ReCAPTCHA from "react-google-recaptcha";
 import { format } from "date-fns";
-import { Loader2, Info } from "lucide-react";
+import { Loader2, Info, CheckCircle } from "lucide-react";
 import { Tenant, BikeType } from "@prisma/client";
 
 import { Button } from "@/components/ui/button";
@@ -78,6 +78,8 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         }
     }, [date, tenant.slug]);
 
+    const recaptchaRef = useRef<ReCAPTCHA>(null);
+
     // Handlers
     const handleSlotSelect = (slotId: string) => {
         setSelectedSlotId(slotId);
@@ -89,35 +91,110 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         setStep("details");
     };
 
-    const onSubmit = async (data: FormValues) => {
-        if (!date || !selectedSlotId || !selectedBikeTypeId) return;
-        if (!captchaToken) {
-            toast.error("Please complete the security check");
-            return;
-        }
+    const onCaptchaChange = (token: string | null) => {
+        if (token) {
+            setCaptchaToken(token);
+            // We can't immediately submit here because we need the form data. 
+            // But wait, handleSubmit (react-hook-form) wraps onSubmit. 
+            // With invisible recaptcha, the flow is:
+            // 1. User clicks submit -> handleSubmit -> onSubmit (our function)
+            // 2. onSubmit calls recaptcha.execute()
+            // 3. Captcha verifies -> onChange(token)
+            // 4. We detect token change and trigger final submission? 
+            // OR: We can't easily pause the onSubmit.
 
-        setIsSubmitting(true);
+            // Better flow:
+            // Store the pending form data in state? Or just re-submit?
+            // Actually, react-google-recaptcha's execute() returns a promise for enterprise, but for v2 standard it's void and triggers onChange.
+
+            // Strategy: When token is received, trigger the server action if we are in "submitting" state.
+            // But we need the data.
+
+            // New Strategy:
+            // The button is type="submit". It triggers handleSubmit -> onSubmit.
+            // Inside onSubmit:
+            // If no token: preventDefault (implicit), setIsSubmitting(true), recaptchaRef.current.execute().
+            // If token exists: proceed to server action.
+            // When onChange fires: setToken. The re-render will update state. 
+            // AND we need to re-trigger the submission? 
+
+            // Since we can't easily re-trigger the form submit event with data, 
+            // let's use a ref to hold the pending data.
+        }
+    };
+
+    // Ref to hold pending data for post-captcha submission
+    const pendingDataRef = useRef<FormValues | null>(null);
+
+    // Effect to trigger submission once token is available
+    useEffect(() => {
+        if (captchaToken && pendingDataRef.current && isSubmitting) {
+            finalSubmit(pendingDataRef.current, captchaToken);
+        }
+    }, [captchaToken]);
+
+    const finalSubmit = async (data: FormValues, token: string) => {
         const formData = new FormData();
         formData.append("slug", tenant.slug);
-        formData.append("date", date.toISOString());
+        formData.append("date", date!.toISOString());
         formData.append("slotId", selectedSlotId);
         formData.append("bikeTypeId", selectedBikeTypeId);
         formData.append("quantity", data.quantity.toString());
         formData.append("customerName", data.customerName);
         formData.append("customerEmail", data.customerEmail);
-        formData.append("customerEmail", data.customerEmail);
         formData.append("customerPhone", data.customerPhone);
-        formData.append("recaptchaToken", captchaToken);
+        formData.append("recaptchaToken", token);
 
-        const result = await submitBookingAction(null, formData);
-        setIsSubmitting(false);
+        console.log("[BookingWizard] Submitting booking request...", { slotId: selectedSlotId, bike: selectedBikeTypeId });
 
-        if (result.error) {
-            toast.error(result.error);
-        } else {
-            setStep("confirmation");
-            window.scrollTo(0, 0);
+        try {
+            // 20 Second Timeout Guard
+            const timeoutPromise = new Promise<{ error?: string }>((_, reject) => {
+                setTimeout(() => reject(new Error("Request timed out. Please check your connection.")), 20000);
+            });
+
+            const result = await Promise.race([
+                submitBookingAction(null, formData),
+                timeoutPromise
+            ]) as any; // Type casting for the race result
+
+            console.log("[BookingWizard] Submission result:", result);
+
+            if (result.error) {
+                toast.error(result.error);
+                setIsSubmitting(false);
+                setCaptchaToken(null);
+                if (recaptchaRef.current) recaptchaRef.current.reset();
+            } else {
+                setStep("confirmation");
+                window.scrollTo(0, 0);
+                setIsSubmitting(false);
+            }
+        } catch (err: any) {
+            console.error("[BookingWizard] Submission error:", err);
+            toast.error(err.message || "An unexpected error occurred.");
+            setIsSubmitting(false);
+            setCaptchaToken(null);
+            if (recaptchaRef.current) recaptchaRef.current.reset();
+        } finally {
+            pendingDataRef.current = null;
         }
+    };
+
+    const onSubmit = async (data: FormValues) => {
+        if (!date || !selectedSlotId || !selectedBikeTypeId) return;
+
+        setIsSubmitting(true);
+
+        if (!captchaToken) {
+            pendingDataRef.current = data;
+            recaptchaRef.current?.execute();
+            return;
+        }
+
+        // If we already have a token (rare in invisible mode unless re-submission), verify it's fresh?
+        // Usually safe to just submit.
+        await finalSubmit(data, captchaToken);
     };
 
     // Derived UI Data
@@ -149,8 +226,8 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
 
                     {step === "confirmation" ? (
                         <div className="bg-white rounded-2xl p-8 text-center shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-gray-100">
-                            <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 text-3xl">
-                                🎉
+                            <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                                <CheckCircle className="w-10 h-10" />
                             </div>
                             <h2 className="text-3xl font-heading font-bold text-gray-900 mb-2">Request Received!</h2>
                             <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
@@ -331,22 +408,25 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 Payment is not required at this stage.
                                             </div>
 
-                                            <div className="flex justify-center my-4 overflow-hidden max-w-full">
+                                            <div className="flex justify-center my-4 overflow-hidden max-w-full h-0">
                                                 <ReCAPTCHA
+                                                    ref={recaptchaRef}
+                                                    size="invisible"
                                                     sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
-                                                    onChange={(val) => setCaptchaToken(val)}
+                                                    onChange={onCaptchaChange}
+                                                    onExpired={() => setIsSubmitting(false)}
+                                                    onError={() => { toast.error("Security check failed"); setIsSubmitting(false); }}
                                                 />
                                             </div>
 
-                                            <Button type="submit" size="lg" className="w-full text-lg h-14" disabled={isSubmitting || !captchaToken}>
-                                                {isSubmitting ? (
-                                                    <>
-                                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                                        Sending Request...
-                                                    </>
-                                                ) : (
-                                                    "Request Booking"
-                                                )}
+                                            <Button
+                                                type="submit"
+                                                size="lg"
+                                                className="w-full text-lg"
+                                                disabled={isSubmitting} // Enabled by default, gated by click
+                                                isLoading={isSubmitting}
+                                            >
+                                                Request Booking
                                             </Button>
                                         </form>
                                     </Card>

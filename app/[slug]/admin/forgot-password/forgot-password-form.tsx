@@ -2,46 +2,77 @@
 
 import { requestPasswordResetAction } from "./actions";
 import ReCAPTCHA from "react-google-recaptcha";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function ForgotPasswordForm({ slug }: { slug: string }) {
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const recaptchaRef = useRef<ReCAPTCHA>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+
+    const onCaptchaChange = (token: string | null) => {
+        if (token) {
+            setCaptchaToken(token);
+            // Auto submit
+        }
+    };
+
+    useEffect(() => {
+        if (captchaToken && isVerifying && formRef.current) {
+            formRef.current.requestSubmit();
+        }
+    }, [captchaToken, isVerifying]);
+
+    const handleVerify = (e: React.MouseEvent) => {
+        if (!captchaToken) {
+            e.preventDefault();
+            setIsVerifying(true);
+            recaptchaRef.current?.execute();
+        }
+    };
 
     return (
-        <form action={requestPasswordResetAction} className="space-y-6">
+        <form ref={formRef} action={requestPasswordResetAction} className="space-y-6">
             <input type="hidden" name="slug" value={slug} />
             <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Admin Email Address
                 </label>
                 <div className="mt-1">
-                    <input
+                    <Input
                         id="email"
                         name="email"
                         type="email"
                         autoComplete="email"
                         required
-                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-black focus:border-black sm:text-sm"
+                        className="block w-full h-12"
                     />
                 </div>
             </div>
 
-            <div className="flex justify-center my-4 overflow-hidden max-w-full">
+            <div className="flex justify-center my-4 overflow-hidden max-w-full h-0">
                 <ReCAPTCHA
+                    ref={recaptchaRef}
+                    size="invisible"
                     sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
-                    onChange={(val) => setCaptchaToken(val)}
+                    onChange={onCaptchaChange}
+                    onError={() => setIsVerifying(false)}
                 />
             </div>
             <input type="hidden" name="recaptchaToken" value={captchaToken || ""} />
 
             <div>
-                <button
+                <Button
                     type="submit"
-                    disabled={!captchaToken}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isVerifying}
+                    isLoading={isVerifying}
+                    className="w-full text-lg h-12"
+                    onClick={handleVerify}
                 >
                     Send Reset Link
-                </button>
+                </Button>
             </div>
         </form>
     );

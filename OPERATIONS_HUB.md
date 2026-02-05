@@ -54,3 +54,17 @@
 - [x] Lint passes (on modified files)
 - [x] Typecheck passes
 - [x] Unit tests pass
+
+### Phase D — UI Standardization & UX Fixes
+- [ ] **Design System**: Established unified visual language (Airbnb-like).
+- [ ] **Components**: Standardized Button, Input, Modal, etc. across all apps.
+- [ ] **Sound & Motion**: Implemented micro-animations and sound feedback.
+- [ ] **reCAPTCHA**: "Gated Action" pattern implemented (smooth, button-driven).
+- [ ] **Bug Fixes**:
+  - [ ] Reserve button "stuck" bug fixed (with instrumentation).
+  - [ ] Calendar highlight bug fixed.
+- [ ] **Super Admin**:
+  - [ ] Login standardized (Password-only).
+  - [ ] Logging extended to capture UX events.
+- [ ] **Cleanliness**: Emojis removed, single icon library used.
+

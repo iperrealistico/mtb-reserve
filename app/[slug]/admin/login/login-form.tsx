@@ -4,7 +4,9 @@ import { useFormState } from "react-dom";
 import { loginAction } from "./actions";
 import { useSearchParams } from "next/navigation";
 import ReCAPTCHA from "react-google-recaptcha";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 // Define the initial state based on the action's return type
 const initialState = {
@@ -15,7 +17,38 @@ export default function LoginForm({ slug }: { slug: string }) {
     const [state, formAction] = useFormState(loginAction, initialState);
     const searchParams = useSearchParams();
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const recaptchaRef = useRef<ReCAPTCHA>(null);
+    const formRef = useRef<HTMLFormElement>(null);
     const error = state?.error;
+
+    const handleLoginClick = (e: React.MouseEvent) => {
+        // Prevent default form submission if no token
+        if (!captchaToken) {
+            e.preventDefault();
+            setIsVerifying(true);
+            recaptchaRef.current?.execute();
+        }
+    };
+
+    const onCaptchaChange = (token: string | null) => {
+        if (token) {
+            setCaptchaToken(token);
+            // Trigger form submission now that we have token
+            // We need to wait for state update? 
+            // In React 18 auto-batching might handle it, but to be safe we can force it or let effect handle it?
+            // Actually requestSubmit() will grab current hidden input value if render happened.
+            // But state update is async. 
+            // Better to trigger submission in an effect or use a ref for the token too?
+        }
+    };
+
+    // Effect to auto-submit when token is set and we were verifying
+    useEffect(() => {
+        if (captchaToken && isVerifying && formRef.current) {
+            formRef.current.requestSubmit();
+        }
+    }, [captchaToken, isVerifying]);
 
     return (
         <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-lg border border-gray-200">
@@ -28,7 +61,7 @@ export default function LoginForm({ slug }: { slug: string }) {
                 </p>
             </div>
 
-            <form action={formAction} className="mt-8 space-y-6">
+            <form ref={formRef} action={formAction} className="mt-8 space-y-6">
                 <input type="hidden" name="slug" value={slug} />
 
                 <div className="rounded-md shadow-sm -space-y-px">
@@ -36,13 +69,13 @@ export default function LoginForm({ slug }: { slug: string }) {
                         <label htmlFor="password" className="sr-only">
                             Password
                         </label>
-                        <input
+                        <Input
                             id="password"
                             name="password"
                             type="password"
                             autoComplete="current-password"
                             required
-                            className="appearance-none relative block w-full px-3 py-4 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-black focus:border-black focus:z-10 sm:text-lg"
+                            className="block w-full text-lg h-14"
                             placeholder="Enter your memorable password"
                         />
                     </div>
@@ -62,22 +95,27 @@ export default function LoginForm({ slug }: { slug: string }) {
                     </div>
                 )}
 
-                <div className="flex justify-center my-4 overflow-hidden max-w-full">
+                <div className="flex justify-center my-4 overflow-hidden max-w-full h-0">
                     <ReCAPTCHA
-                        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"} // Test key
-                        onChange={(val) => setCaptchaToken(val)}
+                        ref={recaptchaRef}
+                        size="invisible"
+                        sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+                        onChange={onCaptchaChange}
+                        onError={() => setIsVerifying(false)}
                     />
                 </div>
                 <input type="hidden" name="recaptchaToken" value={captchaToken || ""} />
 
                 <div>
-                    <button
+                    <Button
                         type="submit"
-                        disabled={!captchaToken}
-                        className="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isVerifying}
+                        isLoading={isVerifying}
+                        className="w-full text-lg h-14"
+                        onClick={handleLoginClick}
                     >
                         Sign in
-                    </button>
+                    </Button>
                 </div>
             </form>
         </div>

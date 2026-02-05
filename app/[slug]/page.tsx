@@ -1,5 +1,6 @@
 import { getTenantBySlug } from "@/lib/tenants";
 import { notFound } from "next/navigation";
+import { Phone, Mail } from "lucide-react";
 import BookingWizard from "@/components/booking/booking-wizard";
 
 export default async function BookingPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -18,8 +19,8 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
                     {tenant.name}
                 </h1>
                 <div className="mt-4 flex justify-center space-x-6 text-gray-500">
-                    {tenant.contactPhone && <span>📞 {tenant.contactPhone}</span>}
-                    {tenant.contactEmail && <span>✉️ {tenant.contactEmail}</span>}
+                    {tenant.contactPhone && <span className="flex items-center gap-1"><Phone className="h-4 w-4" /> {tenant.contactPhone}</span>}
+                    {tenant.contactEmail && <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {tenant.contactEmail}</span>}
                 </div>
             </div>
 

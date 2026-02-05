@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { LogLevel } from "@prisma/client";
+import { X } from "lucide-react";
 
 
 // Inspect existing components?
@@ -85,7 +86,7 @@ export function LogsTable({ logs }: { logs: EventLog[] }) {
                     <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="p-4 border-b flex justify-between items-center">
                             <h3 className="font-semibold text-lg">{selectedLog.eventType}</h3>
-                            <button onClick={() => setSelectedLog(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+                            <button onClick={() => setSelectedLog(null)} className="text-gray-500 hover:text-gray-700"><X className="w-4 h-4" /></button>
                         </div>
                         <div className="p-4 overflow-y-auto space-y-4">
                             <div className="grid grid-cols-2 gap-4 text-sm">
