@@ -214,6 +214,63 @@ export default function SiteSettingsForm({ initialSettings }: { initialSettings:
                     </form>
                 </div>
             </div>
-        </div >
+
+            {/* Admin Password Change - Added as requested */}
+            <div className="bg-white p-6 shadow rounded-lg">
+                <h2 className="text-lg font-medium mb-4">Security</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                    Update your Super Admin password.
+                </p>
+                <PasswordChangeForm />
+            </div>
+        </div>
+    );
+}
+
+import { changeSuperAdminPasswordAction } from "./actions";
+
+function PasswordChangeForm() {
+    const [state, action, isPending] = useActionState(changeSuperAdminPasswordAction, { success: false, error: "" });
+
+    return (
+        <form action={action} className="space-y-4 max-w-xl">
+            <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
+                    id="currentPassword"
+                    name="currentPassword"
+                    type="password"
+                    required
+                />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                    id="newPassword"
+                    name="newPassword"
+                    type="password"
+                    required
+                    minLength={8}
+                />
+                <p className="text-xs text-gray-500">
+                    Must be at least 8 characters, include a number and an uppercase letter.
+                </p>
+            </div>
+
+            {state.success && (
+                <div className="flex items-center gap-2 text-green-600 text-sm">
+                    <Check className="w-4 h-4" /> Password updated successfully
+                </div>
+            )}
+            {state.error && (
+                <div className="flex items-center gap-2 text-red-600 text-sm">
+                    <AlertCircle className="w-4 h-4" /> {state.error}
+                </div>
+            )}
+
+            <Button type="submit" disabled={isPending}>
+                {isPending ? "Updating..." : "Update Password"}
+            </Button>
+        </form>
     );
 }

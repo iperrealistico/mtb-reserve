@@ -11,6 +11,78 @@ async function ensureSuperAdmin() {
     if (!session.isLoggedIn || !session.isSuperAdmin) {
         throw new Error("Unauthorized");
     }
+    return session;
+}
+
+import { db } from "@/lib/db";
+import { hashPassword, verifyPassword } from "@/lib/auth";
+import { logEvent } from "@/lib/events";
+
+export async function changeSuperAdminPasswordAction(_prevState: unknown, formData: FormData) {
+    try {
+        const session = await ensureSuperAdmin();
+
+        const currentPassword = formData.get("currentPassword") as string;
+        const newPassword = formData.get("newPassword") as string;
+
+        if (!currentPassword || !newPassword) {
+            return { success: false, error: "Passwords are required" };
+        }
+
+        // Validate strength
+        const isValid = newPassword.length >= 8 &&
+            /[A-Z]/.test(newPassword) &&
+            /[0-9]/.test(newPassword);
+
+        if (!isValid) {
+            return { success: false, error: "Password must be at least 8 chars, with 1 number and 1 uppercase letter." };
+        }
+
+        const admin = await db.superAdmin.findUnique({
+            where: { id: session.superAdminId }
+        });
+
+        if (!admin) return { success: false, error: "Admin not found" };
+
+        const isCorrect = await verifyPassword(currentPassword, admin.passwordHash);
+        if (!isCorrect) {
+            await logEvent({
+                level: "WARN",
+                actorType: "SUPER_ADMIN",
+                actorId: admin.id,
+                eventType: "PASSWORD_CHANGE_FAILED",
+                message: "Super Admin password change failed: incorrect current password"
+            });
+            return { success: false, error: "Incorrect current password" };
+        }
+
+        const newHash = await hashPassword(newPassword);
+
+        // Update DB and Token Version
+        await db.superAdmin.update({
+            where: { id: admin.id },
+            data: {
+                passwordHash: newHash,
+                tokenVersion: { increment: 1 }
+            }
+        });
+
+        // Update Session
+        session.tokenVersion = (admin.tokenVersion || 0) + 1;
+        await session.save();
+
+        await logEvent({
+            level: "INFO",
+            actorType: "SUPER_ADMIN",
+            actorId: admin.id,
+            eventType: "PASSWORD_CHANGED",
+            message: "Super Admin password updated successfully"
+        });
+
+        return { success: true, error: "" };
+    } catch (error: unknown) {
+        return { success: false, error: (error as Error).message || "Failed to change password" };
+    }
 }
 
 export async function updateSiteSettingsAction(_prevState: unknown, formData: FormData) {

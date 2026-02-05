@@ -55,6 +55,30 @@ async function main() {
         skipDuplicates: true,
     });
 
+    // --- Super Admin Seeding ---
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || "admin@mtb-reserve.com";
+
+    // Check if super admin exists
+    const existingAdmin = await prisma.superAdmin.findUnique({
+        where: { email: superAdminEmail }
+    });
+
+    if (!existingAdmin) {
+        console.log(`Creating Super Admin: ${superAdminEmail}`);
+        const superPassword = process.env.SUPER_ADMIN_INITIAL_PASSWORD || "Admin123!";
+        const superHash = await bcrypt.hash(superPassword, 12);
+
+        await prisma.superAdmin.create({
+            data: {
+                email: superAdminEmail,
+                passwordHash: superHash,
+            }
+        });
+        console.log(`Super Admin created with password: '${superPassword}' (Change this immediately!)`);
+    } else {
+        console.log(`Super Admin '${superAdminEmail}' already exists.`);
+    }
+
     console.log("Seeding finished.");
 }
 

@@ -144,8 +144,15 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
     const newHash = await hashPassword(newPassword);
     await db.tenant.update({
         where: { slug },
-        data: { adminPasswordHash: newHash }
+        data: {
+            adminPasswordHash: newHash,
+            tokenVersion: { increment: 1 } // Invalidate other sessions
+        }
     });
+
+    // Update current session to match new version
+    session.tokenVersion = (tenant.tokenVersion || 0) + 1;
+    await session.save();
 
     await logEvent({
         level: "INFO",

@@ -194,22 +194,24 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                     )}
 
                     {step === "confirmation" ? (
-                        <div className="bg-white rounded-2xl p-8 text-center shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-gray-100">
-                            <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-                                <CheckCircle className="w-10 h-10" />
-                            </div>
-                            <h2 className="text-3xl font-heading font-bold text-gray-900 mb-2">Request Received!</h2>
-                            <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-                                We have sent a confirmation link to <span className="font-semibold text-gray-900">{watch("customerEmail")}</span>.
-                            </p>
-                            <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-8 flex items-start gap-3 text-left">
-                                <Info className="w-5 h-5 shrink-0 mt-0.5" />
-                                <div>
-                                    <strong>Check your inbox within 30 minutes.</strong><br />
-                                    Your booking is held temporarily. If not confirmed, the bikes will be released.
+                        <div className="flex flex-col items-center justify-center min-h-[400px]">
+                            <div className="bg-white rounded-2xl p-8 text-center shadow-[0_6px_16px_rgba(0,0,0,0.08)] border border-gray-100 max-w-lg w-full">
+                                <div className="mx-auto w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
+                                    <CheckCircle className="w-10 h-10" />
                                 </div>
+                                <h2 className="text-3xl font-heading font-bold text-gray-900 mb-2">Request Received!</h2>
+                                <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
+                                    We have sent a confirmation link to <span className="font-semibold text-gray-900">{watch("customerEmail")}</span>.
+                                </p>
+                                <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm mb-8 flex items-start gap-3 text-left">
+                                    <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <div>
+                                        <strong>Check your inbox within 30 minutes.</strong><br />
+                                        Your booking is held temporarily. If not confirmed, the bikes will be released.
+                                    </div>
+                                </div>
+                                <Button onClick={() => window.location.reload()} variant="outline">Book Another</Button>
                             </div>
-                            <Button onClick={() => window.location.reload()} variant="outline">Book Another</Button>
                         </div>
                     ) : (
                         <>

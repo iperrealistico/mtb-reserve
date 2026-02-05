@@ -33,6 +33,7 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
         where: { slug },
         data: {
             adminPasswordHash: newHash,
+            tokenVersion: { increment: 1 }, // Invalidate sessions
             passwordResetToken: null, // Consume token (Single Use)
             passwordResetExpires: null,
         }

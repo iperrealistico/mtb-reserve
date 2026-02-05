@@ -73,6 +73,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     const session = await getSession();
     session.tenantSlug = tenant.slug;
     session.isLoggedIn = true;
+    session.tokenVersion = tenant.tokenVersion;
     await session.save();
 
     redirect(`/${slug}/admin/dashboard`);

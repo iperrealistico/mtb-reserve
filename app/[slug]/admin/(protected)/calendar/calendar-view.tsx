@@ -9,6 +9,7 @@ import { it } from "date-fns/locale"; // Assuming IT locale for MVP as requested
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays } from "lucide-react";
+import { BookingActions } from "@/components/admin/booking-actions";
 
 interface CalendarViewProps {
     slug: string;
@@ -79,8 +80,7 @@ export default function BookingCalendarView({ slug, initialDate, bookings, timez
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        {/* Actions */}
-                                        <Button variant="outline" size="sm">Details</Button>
+                                        <BookingActions booking={booking} slug={slug} />
                                     </div>
                                 </div>
                             ))}

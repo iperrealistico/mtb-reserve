@@ -160,7 +160,7 @@ export default function LandingPage() {
                       <Store className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" />
                       <Input
                         className="w-full pl-12 h-14 bg-neutral-900 border-neutral-700 text-lg text-white placeholder:text-neutral-600 focus-visible:ring-blue-500 focus-visible:border-blue-500 rounded-xl"
-                        placeholder="e.g. sillico"
+                        placeholder="e.g. myshop"
                         value={adminSlug}
                         onChange={(e) => setAdminSlug(e.target.value)}
                         autoFocus

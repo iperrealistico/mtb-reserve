@@ -92,6 +92,7 @@ export async function superAdminLoginAction(prevState: any, formData: FormData) 
     // We do NOT set tenantSlug for super admin global session, or maybe we do if they impersonate?
     // For now, clean session.
     session.tenantSlug = undefined;
+    session.tokenVersion = admin.tokenVersion;
 
     await session.save();
 

@@ -2,6 +2,8 @@ import { getIronSession, SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 import bcrypt from "bcrypt";
 
+import { db } from "@/lib/db";
+
 // --- Session Configuration ---
 
 export interface SessionData {
@@ -9,6 +11,7 @@ export interface SessionData {
     isLoggedIn: boolean;
     isSuperAdmin?: boolean;
     superAdminId?: string;
+    tokenVersion?: number;
 }
 
 export const sessionOptions: SessionOptions = {
@@ -44,22 +47,13 @@ const ITALIAN_ADJECTIVES = ["Grande", "Piccolo", "Forte", "Veloc", "Lento", "Alt
 const ENGLISH_NOUNS = ["Trail", "Bike", "Ride", "Jump", "Drop", "Turn", "Flow", "Rock", "Root", "Dirt"];
 
 export function generateSecureItalianPassword(): string {
-    // Format: Word1-Word2-Word3-1234
-    // Must include at least ONE Italian word. We will use mostly Italian for simplicity and style.
-    // Capitalize each word.
-
     const getWord = (list: string[]) => list[Math.floor(Math.random() * list.length)];
 
-    const w1 = getWord(ITALIAN_NOUNS); // Italian
-    const w2 = getWord(ITALIAN_ADJECTIVES); // Italian
-    const w3 = getWord(ENGLISH_NOUNS); // English mix or Italian? Requirement: "at least ONE Italian word". Let's mix for flavor if we want, but "Montagna-Grande-Trail-1234" is cool.
+    const w1 = getWord(ITALIAN_NOUNS);
+    const w2 = getWord(ITALIAN_ADJECTIVES);
+    const w3 = getWord(ENGLISH_NOUNS);
 
-    // Let's stick to Italian-Italian-Italian or mixed. The existing codebase had English.
-    // "Must be longer than current passwords (target 24+ characters typical)"
-    // 3 words might be short if words are short. 
-    // "Montagna-Grande-Trail-1234" is 24 chars? 8+6+5+4 + 3 dashes = 26. Good.
-
-    const num = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    const num = Math.floor(Math.random() * 9000) + 1000;
 
     return `${w1}-${w2}-${w3}-${num}`;
 }
@@ -69,8 +63,39 @@ export async function ensureAuthenticated(slug?: string) {
     if (!session.isLoggedIn) {
         throw new Error("Unauthorized: Please log in.");
     }
+
+    // Session Invalidation Check
+    if (session.isSuperAdmin && session.superAdminId) {
+        const admin = await db.superAdmin.findUnique({
+            where: { id: session.superAdminId },
+            select: { tokenVersion: true }
+        });
+
+        // If admin is deleted or version mismatch
+        if (!admin || (admin.tokenVersion !== (session.tokenVersion || 0))) {
+            session.destroy();
+            throw new Error("Session invalid. Please log in again.");
+        }
+    } else if (session.tenantSlug) {
+        // Correct tenant check
+        if (slug && session.tenantSlug !== slug) {
+            throw new Error("Forbidden: You do not have access to this tenant.");
+        }
+
+        const tenant = await db.tenant.findUnique({
+            where: { slug: session.tenantSlug },
+            select: { tokenVersion: true }
+        });
+
+        if (!tenant || (tenant.tokenVersion !== (session.tokenVersion || 0))) {
+            session.destroy();
+            throw new Error("Session invalid. Please log in again.");
+        }
+    }
+
     if (slug && !session.isSuperAdmin && session.tenantSlug !== slug) {
         throw new Error("Forbidden: You do not have access to this tenant.");
     }
+
     return session;
 }
