@@ -122,6 +122,8 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
     await sendEmail({
         to: booking.customerEmail,
         subject: `Booking Confirmed - ${bookingCode}`,
+        category: 'recap',
+        entityId: booking.id,
         html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h1 style="color: #1a1a1a; font-size: 24px; margin-bottom: 24px;">Your booking is confirmed</h1>
@@ -178,6 +180,8 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
     await sendEmail({
         to: booking.tenant.registrationEmail,
         subject: `New Confirmed Booking: ${booking.customerName} [${bookingCode}]`,
+        category: 'admin_notification',
+        entityId: `admin_${booking.id}`,
         html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
                 <h2>New Booking Confirmed</h2>
