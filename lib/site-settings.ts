@@ -8,6 +8,10 @@ export interface SiteSettings {
     seoKeywords: string[];
     faviconUrl?: string;
     socialImageUrl?: string;
+    // Email Configuration
+    senderEmailBooking?: string;
+    senderEmailTech?: string;
+    senderEmailDirect?: string;
     updatedAt?: string;
 }
 
@@ -17,6 +21,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
     serpTitle: "MTB Reserve - Bike Rental Platform",
     serpDescription: "Book mountain bikes and e-bikes from local rental shops. Easy online reservations.",
     seoKeywords: ["bike rental", "mountain bike", "e-bike", "booking"],
+    senderEmailBooking: "bookings@mtbreserve.com",
+    senderEmailTech: "tech@mtbreserve.com",
+    senderEmailDirect: "direct@mtbreserve.com",
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {

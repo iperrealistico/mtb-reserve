@@ -76,7 +76,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10 pointer-events-none"></div>
 
           <div className="max-w-md w-full relative z-10">
-            <div className="mb-8">
+            <div className="mb-8 min-h-[160px] flex flex-col justify-end">
               <span className="text-orange-500 font-bold tracking-wider text-xs uppercase mb-2 block">For Riders</span>
               <h2 className="text-4xl lg:text-5xl font-bold mb-4 group-hover:text-white transition-colors">
                 Ready to <span className="text-white">Ride?</span>
@@ -110,12 +110,6 @@ export default function LandingPage() {
               <Button size="lg" className="w-full h-14 text-lg font-bold bg-white text-black hover:bg-neutral-200 rounded-xl">
                 Find Bikes <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-
-              <div className="pt-4 flex gap-3 text-sm text-neutral-500">
-                <span>Try:</span>
-                <button type="button" onClick={() => setLocation("Sillico")} className="text-neutral-300 hover:text-white underline underline-offset-4 decoration-neutral-700 hover:decoration-white transition-all">Sillico</button>
-                <button type="button" onClick={() => setLocation("Castelnuovo")} className="text-neutral-300 hover:text-white underline underline-offset-4 decoration-neutral-700 hover:decoration-white transition-all">Castelnuovo</button>
-              </div>
             </form>
           </div>
         </section>
@@ -125,7 +119,7 @@ export default function LandingPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-black pointer-events-none"></div>
 
           <div className="max-w-md w-full relative z-100">
-            <div className="mb-8">
+            <div className="mb-8 min-h-[160px] flex flex-col justify-end">
               <span className="text-blue-500 font-bold tracking-wider text-xs uppercase mb-2 block">For Rentals & Shops</span>
               <h2 className="text-4xl lg:text-5xl font-bold mb-4 text-white">
                 Manage your <span className="text-blue-500">Fleet</span>
@@ -212,7 +206,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

@@ -156,3 +156,11 @@ model EventLog {
   @@index([eventType, createdAt])
 }
 
+model EmailTemplate {
+  id        String   @id // e.g., "confirmation", "recap", "onboarding", "password_reset", "manual_admin", "notification"
+  subject   String
+  html      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
