@@ -90,7 +90,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                     status: "CONFIRMED",
                     tosAcceptedAt: new Date(),
                     bookingCode,
-                }
+                } as any
             });
         });
     } catch (err: unknown) {
@@ -178,7 +178,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
 
     // Notify Admin
     await sendEmail({
-        to: booking.tenant.registrationEmail,
+        to: (booking.tenant as any).registrationEmail,
         subject: `New Confirmed Booking: ${booking.customerName} [${bookingCode}]`,
         category: 'admin_notification',
         entityId: `admin_${booking.id}`,

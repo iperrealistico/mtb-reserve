@@ -44,6 +44,8 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
     await sendEmail({
         to: tenant.contactEmail,
         subject: `Your New Password for ${tenant.name}`,
+        category: 'password_reset',
+        entityId: slug,
         html: `
             <p>Your password has been reset successfully.</p>
             <p><strong>New Password:</strong> ${newPassword}</p>

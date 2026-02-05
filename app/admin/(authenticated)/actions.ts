@@ -43,13 +43,15 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
                 adminPasswordHash: passwordHash,
                 timezone: "Europe/Rome",
                 settings: {},
-            }
+            } as any
         });
 
         // Email the password to the tenant
         await sendEmail({
             to: contactEmail,
             subject: `Welcome to MTB Reserve - Your Admin Access`,
+            category: 'onboarding',
+            entityId: slug,
             html: `
                 <h1>Welcome, ${name}!</h1>
                 <p>Your tenant account has been created.</p>
@@ -106,9 +108,18 @@ export async function sendTenantEmailAction(prevState: any, formData: FormData):
 
     if (!to || !subject || !body) return { success: false, error: "Missing fields" };
 
-    // In a real app, integrate sendEmail here
-    // await sendEmail({ to, subject, html: body });
-    // Assuming mock success for now as import failed previously
+    const result = await sendEmail({
+        to,
+        subject,
+        html: body,
+        category: 'manual_admin',
+        entityId: slug
+    });
+
+    if (result.error) {
+        const errorMsg = (result.error as any).message || "Check Resend dashboard";
+        return { success: false, error: "Email failed: " + errorMsg };
+    }
 
     return { success: true, error: "" };
 }
@@ -123,7 +134,7 @@ export async function updateTenantDetailsAction(prevState: any, formData: FormDa
 
     await db.tenant.update({
         where: { slug },
-        data: { name, registrationEmail }
+        data: { name, registrationEmail } as any
     });
 
     revalidatePath(`/admin/tenants/${slug}`);
@@ -135,7 +146,7 @@ export async function updateTenantDetailsAction(prevState: any, formData: FormDa
 export async function resetTenantPasswordAdminAction(prevState: any, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
 
-    const tenant = await db.tenant.findUnique({ where: { slug } });
+    const tenant = await db.tenant.findUnique({ where: { slug } }) as any;
     if (!tenant) return { success: false, error: "Tenant not found" };
 
     const newPassword = generateSecureItalianPassword();
@@ -150,6 +161,8 @@ export async function resetTenantPasswordAdminAction(prevState: any, formData: F
     await sendEmail({
         to: tenant.registrationEmail,
         subject: `Security Alert: Admin Password Reset`,
+        category: 'password_reset',
+        entityId: slug,
         html: `
             <h1>Password Reset</h1>
             <p>Your admin password for <strong>${tenant.name}</strong> has been reset by a system administrator.</p>

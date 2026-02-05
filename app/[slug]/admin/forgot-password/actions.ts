@@ -33,7 +33,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     // 2. Find Tenant
     const tenant = await db.tenant.findUnique({
         where: { slug },
-    });
+    }) as any;
 
     // 3. Verify Email matches Registration Email
     if (tenant && tenant.registrationEmail.toLowerCase() === email.toLowerCase()) {
@@ -63,6 +63,8 @@ export async function requestPasswordResetAction(formData: FormData) {
         await sendEmail({
             to: email,
             subject: `Reset Password for ${tenant.name}`,
+            category: 'password_reset',
+            entityId: slug,
             html: `
                 <p>Hello,</p>
                 <p>You requested a password reset for <strong>${tenant.name}</strong>.</p>

@@ -16,10 +16,11 @@ export default function TenantEmailer({ slug, adminEmail }: { slug: string, admi
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Send Email to Admin</h3>
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => setOpen(!open)}
                 >
+                    <Mail className="w-4 h-4 mr-2" />
                     {open ? "Cancel" : "Compose"}
                 </Button>
             </div>
