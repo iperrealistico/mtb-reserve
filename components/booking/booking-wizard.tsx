@@ -418,7 +418,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 Payment is not required at this stage.
                                             </div>
 
-                                            <div className="absolute opacity-0 pointer-events-none -z-10">
+                                            <div className="absolute bottom-0 right-0 opacity-0 pointer-events-none">
                                                 <ReCAPTCHA
                                                     ref={recaptchaRef}
                                                     size="invisible"
