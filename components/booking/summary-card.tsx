@@ -7,9 +7,10 @@ interface SummaryCardProps {
     bikeName?: string;
     quantity?: number;
     loading?: boolean;
+    totalPrice?: number;
 }
 
-export function SummaryCard({ date, slotLabel, bikeName, quantity, loading }: SummaryCardProps) {
+export function SummaryCard({ date, slotLabel, bikeName, quantity, loading, totalPrice }: SummaryCardProps) {
     return (
         <Card className="h-fit sticky top-4 shadow-[0_6px_16px_rgba(0,0,0,0.08)] border-none rounded-2xl">
             <CardHeader className="pb-4">
@@ -50,10 +51,14 @@ export function SummaryCard({ date, slotLabel, bikeName, quantity, loading }: Su
 
                 <div className="h-px bg-gray-100 my-2" />
 
-                {/* Total (Mock for now as price is free in MVP) */}
+                {/* Total */}
                 <div className="flex justify-between items-center pt-2">
                     <span className="font-bold text-lg">Total</span>
-                    <span className="font-bold text-lg text-primary">Free</span>
+                    <span className="font-bold text-lg text-primary">
+                        {totalPrice !== undefined && totalPrice > 0
+                            ? `€${totalPrice.toFixed(2)}`
+                            : date && slotLabel && bikeName ? "Free" : "--"}
+                    </span>
                 </div>
 
                 {loading && (

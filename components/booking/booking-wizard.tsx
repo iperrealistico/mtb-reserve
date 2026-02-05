@@ -145,6 +145,25 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
     };
     const formatBikeName = (id: string) => tenant.bikeTypes.find(b => b.id === id)?.name;
 
+    const calculatePrice = () => {
+        if (!selectedSlotId || !selectedBikeTypeId) return 0;
+        const slot = slots.find(s => s.id === selectedSlotId);
+        const bike = tenant.bikeTypes.find(b => b.id === selectedBikeTypeId);
+        if (!slot || !bike) return 0;
+
+        // Calculate duration hours
+        // Format of slot.start/end is "HH:MM"
+        // Since we are in Wizard, we assume date is consistent or we just use relative hours
+        const getHours = (time: string) => {
+            const [h, m] = time.split(':').map(Number);
+            return h + (m / 60);
+        };
+        const duration = getHours(slot.end) - getHours(slot.start);
+        const cost = bike.costPerHour || 0;
+
+        return duration * cost * watchQuantity;
+    };
+
     const stepsList = [
         { id: "date", label: "Date" },
         { id: "slot", label: "Time" },
@@ -299,6 +318,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                             <Badge variant="outline" className={`${stock < 3 ? "text-orange-600 border-orange-200 bg-orange-50" : "text-gray-600"}`}>
                                                                 {stock} available
                                                             </Badge>
+                                                            {(bike.costPerHour || 0) > 0 && <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">€{bike.costPerHour?.toFixed(2)}/hr</Badge>}
                                                         </div>
                                                     )}
                                                 </button>
@@ -386,6 +406,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                             bikeName={formatBikeName(selectedBikeTypeId)}
                             quantity={watchQuantity}
                             loading={loadingSlots}
+                            totalPrice={calculatePrice()}
                         />
                     )}
                 </div>

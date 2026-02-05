@@ -18,7 +18,8 @@ export async function createBikeTypeAction(formData: FormData) {
             tenantSlug: slug,
             name,
             totalStock,
-            brokenCount: 0
+            brokenCount: 0,
+            costPerHour: Number(formData.get("costPerHour")) || 0
         }
     });
 
@@ -37,7 +38,8 @@ export async function updateBikeTypeAction(formData: FormData) {
         where: { id },
         data: {
             totalStock,
-            brokenCount
+            brokenCount,
+            costPerHour: Number(formData.get("costPerHour")) || 0
         }
     });
 

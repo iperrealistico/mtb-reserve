@@ -43,6 +43,9 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                                     Broken / Maint.
                                 </th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Cost/Hr (€)
+                                </th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Calc Available
                                 </th>
                                 <th scope="col" className="relative px-6 py-3">
@@ -107,6 +110,10 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                                             <Input name="brokenCount" type="number" defaultValue={bike.brokenCount} className="h-8 w-16" min={0} />
                                             <span className="text-xs text-gray-400">Broken</span>
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <Input name="costPerHour" type="number" defaultValue={bike.costPerHour} step="0.01" className="h-8 w-16" min={0} />
+                                            <span className="text-xs text-gray-400">€/hr</span>
+                                        </div>
                                         <Button size="sm" type="submit" variant="ghost" className="h-7 text-xs w-full mt-1">
                                             <Save className="w-3 h-3 mr-1" /> Update
                                         </Button>
@@ -144,6 +151,10 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                         <div className="w-24">
                             <label className="block text-sm font-medium text-gray-700">Stock</label>
                             <Input name="totalStock" type="number" defaultValue={1} min={1} required />
+                        </div>
+                        <div className="w-24">
+                            <label className="block text-sm font-medium text-gray-700">Cost/Hr</label>
+                            <Input name="costPerHour" type="number" step="0.01" defaultValue={0} min={0} required />
                         </div>
                         <Button type="submit">Add</Button>
                     </form>

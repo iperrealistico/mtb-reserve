@@ -80,6 +80,12 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
                             <span className="text-gray-600">Guest</span>
                             <span className="font-medium">{booking.customerName}</span>
                         </div>
+                        {(booking.totalPrice || 0) > 0 && (
+                            <div className="flex justify-between border-b pb-2 border-gray-200 bg-green-50 p-2 rounded -mx-2">
+                                <span className="text-gray-900 font-bold">Total Price</span>
+                                <span className="font-bold text-green-700">€{(booking.totalPrice || 0).toFixed(2)}</span>
+                            </div>
+                        )}
                     </div>
 
                     <ConfirmationForm token={token} />

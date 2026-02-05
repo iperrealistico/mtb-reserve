@@ -40,6 +40,7 @@ model BikeType {
   totalStock  Int      @default(0)
   brokenCount Int      @default(0)
   notes       String?
+  costPerHour Float    @default(0)
 
   tenant      Tenant   @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
   bookings    Booking[]
@@ -54,6 +55,7 @@ enum BookingStatus {
   REJECTED
   CANCELLED
   COMPLETED
+  PAID
   NO_SHOW
 }
 
@@ -76,6 +78,8 @@ model Booking {
   customerPhone     String
   
   quantity          Int           @default(1)
+  totalPrice        Float         @default(0)
+  paidAmount        Float         @default(0)
   
   // Confirmation logic
   confirmationToken String?       @unique

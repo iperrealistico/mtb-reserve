@@ -21,3 +21,28 @@ export async function cancelBookingAction(formData: FormData) {
     revalidatePath(`/${slug}/admin/calendar`);
     revalidatePath(`/${slug}`);
 }
+
+export async function updateBookingStatusAction(bookingId: string, slug: string, status: string) {
+    await ensureAuthenticated(slug);
+
+    await db.booking.update({
+        where: { id: bookingId },
+        data: { status: status as any }
+    });
+
+    revalidatePath(`/${slug}/admin/dashboard`);
+}
+
+export async function markAsPaidAction(bookingId: string, slug: string, amount: number) {
+    await ensureAuthenticated(slug);
+
+    await db.booking.update({
+        where: { id: bookingId },
+        data: {
+            status: "PAID",
+            paidAmount: amount
+        }
+    });
+
+    revalidatePath(`/${slug}/admin/dashboard`);
+}

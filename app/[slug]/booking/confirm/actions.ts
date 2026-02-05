@@ -150,6 +150,12 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Quantity</td>
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.quantity}</td>
                     </tr>
+                    ${(booking.totalPrice || 0) > 0 ? `
+                    <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Total Price</td>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500; font-size: 16px; color: #008000;">€${(booking.totalPrice || 0).toFixed(2)}</td>
+                    </tr>
+                    ` : ''}
                     <tr>
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Name</td>
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.customerName}</td>

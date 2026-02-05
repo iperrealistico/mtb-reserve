@@ -149,6 +149,7 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
                     confirmationToken: token,
                     // 30 min expiry
                     expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+                    totalPrice: (bikeType.costPerHour || 0) * ((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)) * data.quantity,
                 },
             });
         });
