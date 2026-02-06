@@ -244,7 +244,16 @@ export async function sendSignupRequest(formData: any) {
     const adminPromise = (async () => {
         const { subject, html, from } = await getTemplateContent("signup_request_admin", data, {
             subject: `New Join Request: ${organization || firstName}`,
-            html: `<h2>New Join Request</h2><p>Name: ${firstName} ${lastName}</p><p>Org: ${organization}</p><p>Email: ${email}</p>`
+            html: `
+                <h2>New Join Request</h2>
+                <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+                <p><strong>Organization:</strong> ${organization}</p>
+                <p><strong>Email:</strong> ${email}</p>
+                <p><strong>Phone:</strong> ${phone}</p>
+                <p><strong>Location:</strong> ${address}</p>
+                <p><strong>Fleet Details:</strong></p>
+                <p style="background:#f4f4f4; padding:10px; border-radius:4px;">${message}</p>
+            `
         });
 
         if (process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY) { // Use SHOULD_LOG logic
