@@ -189,6 +189,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
         description: "Start taking online bookings in 5 minutes. No monthly fees. No commission. No payment processing headaches. Just a simple, beautiful booking system designed specifically for MTB and e-bike rentals.",
         ctaRider: "Find a Bike",
         ctaShop: "Join as Partner",
+        heroImage: "/images/about/mtb-reserve-bike-renting-system-1.jpeg",
     },
     whatIs: {
         title: "What is MTB Reserve? The Simplest Bike Rental Software",
@@ -207,6 +208,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
             "Tour operators managing guided MTB experiences",
             "Small bike shops that want to offer rentals alongside sales"
         ],
+        image: "/images/about/mtb-reserve-bike-renting-system-2.jpeg",
     },
     howItWorksRiders: {
         title: "How to Book a Mountain Bike Online with MTB Reserve",
@@ -326,6 +328,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                 description: "Most platforms require payment gateway setup, transaction fees, chargeback risks, and refund processing. With MTB Reserve, customers pay at pickup. Simple."
             },
         ],
+        image: "/images/about/mtb-reserve-bike-renting-system-3.jpeg",
     },
     whyFree: {
         title: "Why is MTB Reserve Free? (And What's the Catch?)",
@@ -347,6 +350,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
             "Reduces friction – More bookings, fewer abandoned carts",
             "Your relationship, your rules – Handle payments your way"
         ],
+        image: "/images/about/mtb-reserve-bike-renting-system-4.jpeg",
     },
     setupGuide: {
         title: "Set Up Your Bike Rental Booking System in 5 Minutes",
@@ -423,6 +427,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                 ]
             },
         ],
+        image: "/images/about/mtb-reserve-bike-renting-system-5.jpeg",
     },
     locations: {
         title: "MTB Reserve Bike Rental Locations",
@@ -440,6 +445,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
             "Easy online booking with no upfront payment"
         ],
         joinCta: "We're expanding to new locations across Europe. If you run a bike rental shop and want to offer online booking for free, join MTB Reserve today.",
+        image: "/images/about/mtb-reserve-bike-renting-system-6.jpeg",
     },
     faq: {
         title: "FAQs: Mountain Bike Rental Booking with MTB Reserve",
@@ -499,6 +505,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
         shopTitle: "For Bike Shops",
         shopDescription: "Join the network—free. Get your shop online in 5 minutes. No fees, no commissions, no hassle.",
         shopCta: "I Want to Join",
+        image: "/images/about/mtb-reserve-bike-renting-system-1.jpeg",
     },
 };
 
