@@ -1,5 +1,6 @@
 import { HowItWorksShopsContent, SettingsContent } from "@/lib/about-content";
 import { LayoutDashboard, CalendarDays, Package, Settings, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import PhotoPlaceholder from "./PhotoPlaceholder";
 
 interface HowItWorksShopsProps {
@@ -28,13 +29,21 @@ export default function HowItWorksShops({ content, settingsContent }: HowItWorks
                     {content.features.map((feature, index) => {
                         const Icon = featureIcons[index] || LayoutDashboard;
                         const isEven = index % 2 === 0;
+                        const hasImage = !!feature.image;
 
                         return (
                             <div
                                 key={index}
-                                className={`grid lg:grid-cols-2 gap-8 items-center ${isEven ? "" : "lg:flex-row-reverse"}`}
+                                className={cn(
+                                    "grid gap-8 items-center",
+                                    hasImage ? "lg:grid-cols-2" : "max-w-3xl mx-auto",
+                                    hasImage && !isEven && "lg:flex-row-reverse"
+                                )}
                             >
-                                <div className={`space-y-4 ${isEven ? "" : "lg:order-2"}`}>
+                                <div className={cn(
+                                    "space-y-4",
+                                    hasImage && !isEven && "lg:order-2"
+                                )}>
                                     <div className="flex items-center gap-3">
                                         <div className="p-3 bg-gray-100 rounded-xl">
                                             <Icon className="w-6 h-6 text-gray-700" />
@@ -57,12 +66,15 @@ export default function HowItWorksShops({ content, settingsContent }: HowItWorks
                                         </ul>
                                     )}
                                 </div>
-                                <div className={isEven ? "" : "lg:order-1"}>
-                                    <PhotoPlaceholder
-                                        label={`Screenshot: ${feature.title}`}
-                                        aspectRatio="video"
-                                    />
-                                </div>
+                                {hasImage && (
+                                    <div className={cn(hasImage && !isEven && "lg:order-1")}>
+                                        <img
+                                            src={feature.image}
+                                            alt={feature.title}
+                                            className="rounded-2xl shadow-lg w-full border border-gray-100"
+                                        />
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

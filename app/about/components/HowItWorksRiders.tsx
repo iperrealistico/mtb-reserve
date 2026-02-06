@@ -24,9 +24,8 @@ export default function HowItWorksRiders({ content, confirmationContent }: HowIt
                 </div>
 
                 {/* Steps */}
-                <div className="grid md:grid-cols-2 gap-8 mb-20">
+                <div className="grid md:grid-cols-2 gap-8 mb-12">
                     {content.steps.map((step, index) => {
-                        const Icon = stepIcons[index] || Calendar;
                         return (
                             <div
                                 key={index}
@@ -42,54 +41,81 @@ export default function HowItWorksRiders({ content, confirmationContent }: HowIt
                                         </h3>
                                     </div>
                                 </div>
-                                <p className="text-gray-600 leading-relaxed mb-6 pl-16">
+                                <p className="text-gray-600 leading-relaxed pl-16">
                                     {step.description}
                                 </p>
-                                <div className="pl-16">
-                                    <PhotoPlaceholder
-                                        label={`Screenshot: Booking wizard Step ${index + 1}`}
-                                        aspectRatio="video"
-                                    />
-                                </div>
                             </div>
                         );
                     })}
                 </div>
 
+                {/* Main UI Image for Riders */}
+                {content.image && (
+                    <div className="mb-20">
+                        <img
+                            src={content.image}
+                            alt="MTB Reserve Rider Booking Interface"
+                            className="rounded-2xl shadow-xl w-full border border-gray-200"
+                        />
+                    </div>
+                )}
+
                 {/* Confirmation Flow */}
                 <div className="bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-green-100 rounded-xl">
-                            <Shield className="w-6 h-6 text-green-700" />
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {confirmationContent.title}
-                        </h3>
-                    </div>
-
-                    <p className="text-lg text-gray-600 mb-8">
-                        {confirmationContent.intro}
-                    </p>
-
-                    <div className="grid md:grid-cols-4 gap-4 mb-8">
-                        {confirmationContent.steps.map((step, index) => (
-                            <div
-                                key={index}
-                                className="flex flex-col items-center text-center p-4 bg-gray-50 rounded-xl"
-                            >
-                                <div className="w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center font-bold text-sm mb-3">
-                                    {index + 1}
-                                </div>
-                                <p className="text-sm text-gray-600">{step}</p>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="bg-blue-50 rounded-xl p-6 flex items-start gap-4">
-                        <Mail className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <div>
-                            <h4 className="font-bold text-gray-900 mb-1">Your Booking Code</h4>
-                            <p className="text-gray-600">{confirmationContent.bookingCodeDescription}</p>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-green-100 rounded-xl">
+                                    <Shield className="w-6 h-6 text-green-700" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {confirmationContent.title}
+                                </h3>
+                            </div>
+
+                            <p className="text-lg text-gray-600 mb-8">
+                                {confirmationContent.intro}
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                {confirmationContent.steps.map((step, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex flex-col items-center text-center p-4 bg-gray-50 rounded-xl"
+                                    >
+                                        <div className="w-8 h-8 bg-gray-900 text-white rounded-full flex items-center justify-center font-bold text-sm mb-3">
+                                            {index + 1}
+                                        </div>
+                                        <p className="text-xs text-gray-600">{step}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-blue-50 rounded-xl p-6 flex items-start gap-4">
+                                <Mail className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+                                <div>
+                                    <h4 className="font-bold text-gray-900 mb-1">Your Booking Code</h4>
+                                    <p className="text-gray-600 text-sm">
+                                        {confirmationContent.bookingCodeDescription}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Confirmation Image */}
+                        <div>
+                            {confirmationContent.image ? (
+                                <img
+                                    src={confirmationContent.image}
+                                    alt="MTB Reserve Confirmation Flow"
+                                    className="rounded-2xl shadow-lg w-full border border-gray-100"
+                                />
+                            ) : (
+                                <PhotoPlaceholder
+                                    label="Screenshot: Confirmation success screen"
+                                    aspectRatio="video"
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

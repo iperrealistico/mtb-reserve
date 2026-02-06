@@ -50,31 +50,49 @@ export default function SetupGuideSection({ content, availabilityContent }: Setu
                 </div>
 
                 {/* Screenshot */}
-                <div className="mb-20">
-                    <PhotoPlaceholder
-                        label="Screenshot: Complete booking wizard showing a customer making a reservation"
-                        aspectRatio="video"
-                    />
-                </div>
+                {content.image && (
+                    <div className="mb-20">
+                        <img
+                            src={content.image}
+                            alt="Setup Guide Screenshot"
+                            className="rounded-2xl shadow-xl w-full border border-gray-200"
+                        />
+                    </div>
+                )}
 
                 {/* Availability Section */}
                 <div className="bg-white rounded-2xl p-8 md:p-12 shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="p-3 bg-blue-100 rounded-xl">
-                            <Zap className="w-6 h-6 text-blue-700" />
+                    <div className="grid lg:grid-cols-2 gap-12 items-center mb-8">
+                        <div>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-blue-100 rounded-xl">
+                                    <Zap className="w-6 h-6 text-blue-700" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900">
+                                    {availabilityContent.title}
+                                </h3>
+                            </div>
+
+                            <p className="text-lg text-gray-600 mb-8">
+                                {availabilityContent.intro}
+                            </p>
+
+                            {/* Formula */}
+                            <div className="bg-gray-900 text-white font-mono text-center py-4 px-6 rounded-xl mb-8 text-lg">
+                                {availabilityContent.formula}
+                            </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                            {availabilityContent.title}
-                        </h3>
-                    </div>
 
-                    <p className="text-lg text-gray-600 mb-8 max-w-3xl">
-                        {availabilityContent.intro}
-                    </p>
-
-                    {/* Formula */}
-                    <div className="bg-gray-900 text-white font-mono text-center py-4 px-6 rounded-xl mb-8 text-lg">
-                        {availabilityContent.formula}
+                        {/* Availability Image */}
+                        <div>
+                            {availabilityContent.image && (
+                                <img
+                                    src={availabilityContent.image}
+                                    alt="Availability Calculation"
+                                    className="rounded-2xl shadow-lg w-full border border-gray-100"
+                                />
+                            )}
+                        </div>
                     </div>
 
                     {/* Features */}

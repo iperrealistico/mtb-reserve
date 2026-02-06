@@ -26,13 +26,13 @@ export interface WhatIsContent {
 export interface BookingStep {
     title: string;
     description: string;
-    screenshotPlaceholder?: string;
 }
 
 export interface HowItWorksRidersContent {
     title: string;
     intro: string;
     steps: BookingStep[];
+    image?: string;
 }
 
 export interface ConfirmationFlowContent {
@@ -40,13 +40,14 @@ export interface ConfirmationFlowContent {
     intro: string;
     steps: string[];
     bookingCodeDescription: string;
+    image?: string;
 }
 
 export interface AdminFeature {
     title: string;
     description: string;
     bullets?: string[];
-    screenshotPlaceholder?: string;
+    image?: string;
 }
 
 export interface HowItWorksShopsContent {
@@ -106,6 +107,7 @@ export interface SetupGuideContent {
     title: string;
     intro: string;
     steps: SetupStep[];
+    image?: string;
 }
 
 export interface AvailabilityContent {
@@ -116,6 +118,7 @@ export interface AvailabilityContent {
         title: string;
         description: string;
     }[];
+    image?: string;
 }
 
 export interface NicheContent {
@@ -208,7 +211,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
             "Tour operators managing guided MTB experiences",
             "Small bike shops that want to offer rentals alongside sales"
         ],
-        image: "/images/about/mtb-reserve-bike-renting-system-2.jpeg",
+        image: "/images/about/ui-find-a-ride.png",
     },
     howItWorksRiders: {
         title: "How to Book a Mountain Bike Online with MTB Reserve",
@@ -231,6 +234,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                 description: "Fill in your name, email, and phone number. That's it. You'll receive a confirmation email with a magic link—click it to confirm your booking and receive your unique booking code for pickup. No payment required online. You pay when you arrive at the shop—cash or card, your choice.",
             },
         ],
+        image: "/images/about/ui-steps.png",
     },
     confirmationFlow: {
         title: "Secure Bike Rental Reservations with Email Verification",
@@ -242,6 +246,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
             "Show up and ride → Present your code at pickup"
         ],
         bookingCodeDescription: "Every confirmed reservation includes a unique alphanumeric booking code (e.g., MTB-A7X3K2). This code is your ticket to your bike—just show it at the rental shop when you arrive.",
+        image: "/images/about/ui-confirmed.png",
     },
     howItWorksShops: {
         title: "MTB Rental Management Software for Bike Shops",
@@ -256,6 +261,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                     "Total bookings – Your complete reservation history",
                     "Quick actions – Confirm, cancel, or modify bookings with one click"
                 ],
+                image: "/images/about/ui-dashboard.png",
             },
             {
                 title: "Calendar View for Bike Reservations",
@@ -270,6 +276,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                     "Track broken/maintenance bikes – Automatically excluded from availability",
                     "Set hourly pricing – Display rental rates to customers"
                 ],
+                image: "/images/about/ui-inventory.png",
             },
         ],
     },
@@ -377,6 +384,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                 duration: "30 seconds",
             },
         ],
+        image: "/images/about/mtb-reserve-bike-renting-system-2.jpeg",
     },
     availability: {
         title: "No More Double-Booking: Smart Availability for Bike Rentals",
@@ -396,6 +404,7 @@ export const DEFAULT_ABOUT_CONTENT: AboutPageContent = {
                 description: "Got a bike in the shop for repairs? Mark it as \"broken\" in your inventory. It's automatically removed from availability until you fix it. No manual calendar blocking required."
             },
         ],
+        image: "/images/about/ui-overlap-efficiency.png",
     },
     niche: {
         title: "Specialized Booking Software for Mountain Bike and E-Bike Rentals",
