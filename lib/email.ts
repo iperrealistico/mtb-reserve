@@ -4,17 +4,22 @@ import { logEvent } from "@/lib/events";
 import { getSiteSettings } from "@/lib/site-settings";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_mock_key");
-const DEFAULT_FROM_EMAIL = process.env.FROM_EMAIL || "MTB Reserve <info@mtbreserve.com>";
+const DEFAULT_FROM_EMAIL = "MTB Reserve <direct@mtbreserve.com>";
 const SHOULD_LOG = process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY;
 
 // Template Helper
 async function getTemplateContent(id: string, placeholders: Record<string, string>, defaults: { subject: string, html: string }) {
     let { subject, html } = defaults;
+    let senderName = "MTB Reserve";
+    let senderEmail = "direct@mtbreserve.com";
+
     try {
         const template = await (db as any).emailTemplate.findUnique({ where: { id } });
         if (template) {
             subject = template.subject;
             html = template.html;
+            if (template.senderName) senderName = template.senderName;
+            if (template.senderEmail) senderEmail = template.senderEmail;
         }
     } catch (e) {
         console.error(`Failed to fetch template ${id}`, e);
@@ -30,26 +35,24 @@ async function getTemplateContent(id: string, placeholders: Record<string, strin
 
     return {
         subject: replace(subject),
-        html: replace(html)
+        html: replace(html),
+        from: `${senderName} <${senderEmail}>`
     };
 }
 
 export async function sendConfirmationLink(to: string, slug: string, token: string) {
     const link = `${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/booking/confirm/${token}`;
 
-    const { subject, html } = await getTemplateContent("confirmation", { link, tenantName: slug }, {
+    const { subject, html, from } = await getTemplateContent("confirmation", { link, tenantName: slug }, {
         subject: "Confirm your MTB Booking",
         html: `<p>Please click here to confirm your booking: <a href="${link}">${link}</a></p><p>This link expires in 30 minutes.</p>`
     });
 
     if (SHOULD_LOG) {
-        console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+        console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
         await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock email: ${subject}`, metadata: { to } });
         return { success: true };
     }
-
-    const settings = await getSiteSettings();
-    const from = settings.senderEmailBooking || DEFAULT_FROM_EMAIL;
 
     try {
         const { data, error } = await resend.emails.send({
@@ -88,27 +91,25 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
 }
 
 export async function sendBookingRecap(to: string, booking: any) {
-    const { subject, html } = await getTemplateContent("recap", {
+    const { subject, html, from } = await getTemplateContent("recap", {
         bookingCode: booking.bookingCode || "N/A",
         date: new Date(booking.startTime).toLocaleDateString(),
         time: new Date(booking.startTime).toLocaleTimeString(),
         bike: booking.bikeType?.name || "Bikes",
         quantity: String(booking.quantity),
         customerName: booking.customerName,
-        tenantName: booking.tenantSlug || "MTB Reserve"
+        tenantName: booking.tenantSlug || "MTB Reserve",
+        pickupUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/${booking.tenantSlug}`
     }, {
         subject: "Booking Confirmed!",
         html: `<h1>Ready to ride!</h1><p>Your booking is confirmed.</p><ul><li><strong>Date:</strong> ${new Date(booking.startTime).toLocaleString()}</li><li><strong>Bikes:</strong> ${booking.quantity}x ${booking.bikeType?.name || "Bikes"}</li></ul><p>See you soon!</p>`
     });
 
     if (SHOULD_LOG) {
-        console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+        console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
         await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock recap email`, metadata: { to } });
         return { success: true };
     }
-
-    const settings = await getSiteSettings();
-    const from = settings.senderEmailBooking || DEFAULT_FROM_EMAIL;
 
     try {
         const { data, error } = await resend.emails.send({
@@ -146,7 +147,7 @@ export async function sendBookingRecap(to: string, booking: any) {
 }
 
 export async function sendAdminNotification(tenantEmail: string, booking: any) {
-    const { subject, html } = await getTemplateContent("admin_notification", {
+    const { subject, html, from } = await getTemplateContent("admin_notification", {
         customerName: booking.customerName,
         customerPhone: booking.customerPhone,
         customerEmail: booking.customerEmail,
@@ -161,12 +162,9 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
     });
 
     if (SHOULD_LOG) {
-        console.log(`[MOCK EMAIL ADMIN] To: ${tenantEmail} | Subject: ${subject}`);
+        console.log(`[MOCK EMAIL ADMIN] To: ${tenantEmail} | From: ${from} | Subject: ${subject}`);
         return { success: true };
     }
-
-    const settings = await getSiteSettings();
-    const from = settings.senderEmailBooking || DEFAULT_FROM_EMAIL;
 
     try {
         const { data, error } = await resend.emails.send({
@@ -203,6 +201,56 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
     }
 }
 
+export async function sendSignupRequest(formData: any) {
+    const { firstName, lastName, organization, email, phone, address, message } = formData;
+
+    // Send TO the Signup Bot / Super Admin
+    // For now, hardcoded to a common address, or we could fetch a separate setting if we had one.
+    // Using a generic one or the same as Direct for now.
+    const recipient = "signup@mtbreserve.com";
+
+    const { subject, html, from } = await getTemplateContent("signup_request", {
+        firstName, lastName, organization, email, phone, address, message
+    }, {
+        subject: `New Join Request: ${organization || firstName}`,
+        html: `<h2>New Join Request</h2>
+        <p><strong>Name:</strong> ${firstName} ${lastName}</p>
+        <p><strong>Org:</strong> ${organization}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone}</p>
+        <p><strong>Address:</strong> ${address}</p>
+        <p><strong>Message:</strong> ${message}</p>`
+    });
+
+    if (SHOULD_LOG) {
+        console.log(`[MOCK EMAIL SIGNUP] To: ${recipient} | From: ${from} | Subject: ${subject}`);
+        await logEvent({ level: "INFO", actorType: "GUEST", eventType: "EMAIL_SENT_MOCK", message: `Mock signup email`, metadata: { to: recipient } });
+        return { success: true };
+    }
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from,
+            to: recipient,
+            subject,
+            html,
+            tags: [{ name: 'category', value: 'signup_request' }]
+        });
+        if (error) throw error;
+
+        await logEvent({
+            level: "INFO",
+            actorType: "GUEST",
+            eventType: "EMAIL_SENT",
+            message: "Signup request sent",
+            metadata: { to: recipient, providerId: data?.id }
+        });
+        return { success: true };
+    } catch (error: unknown) {
+        return { error };
+    }
+}
+
 export async function sendEmail({ to, subject, html, category = 'generic', entityId }: { to: string, subject: string, html: string, category?: string, entityId?: string }) {
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
@@ -210,12 +258,8 @@ export async function sendEmail({ to, subject, html, category = 'generic', entit
         return { success: true };
     }
 
-    const settings = await getSiteSettings();
-    // Determine sender based on category, but default to Direct/Generic or Tech
-    let from = settings.senderEmailDirect || DEFAULT_FROM_EMAIL;
-    if (category === 'password_reset' || category === 'security') {
-        from = settings.senderEmailTech || DEFAULT_FROM_EMAIL;
-    }
+    // Default sender
+    const from = DEFAULT_FROM_EMAIL;
 
     try {
         const { data, error } = await resend.emails.send({

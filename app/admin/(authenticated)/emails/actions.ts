@@ -3,12 +3,12 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
-export async function saveEmailTemplateAction(id: string, subject: string, html: string) {
+export async function saveEmailTemplateAction(id: string, subject: string, html: string, senderName?: string, senderEmail?: string) {
     try {
         await (db as any).emailTemplate.upsert({
             where: { id },
-            update: { subject, html },
-            create: { id, subject, html }
+            update: { subject, html, senderName, senderEmail },
+            create: { id, subject, html, senderName, senderEmail }
         });
         revalidatePath("/admin/emails");
         return { success: true };

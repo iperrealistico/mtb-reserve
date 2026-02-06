@@ -71,56 +71,7 @@ export default function SiteSettingsForm({ initialSettings }: { initialSettings:
                 </form>
             </div>
 
-            {/* Email Configuration */}
-            <div className="bg-white p-6 shadow rounded-lg">
-                <h2 className="text-lg font-medium mb-4">Email Configuration</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                    Configure the sender addresses for different types of automated emails.
-                </p>
-                <form action={seoAction} className="space-y-4 max-w-xl">
-                    {/* Hidden fields to preserve other settings */}
-                    <input type="hidden" name="serpTitle" value={initialSettings.serpTitle} />
-                    <input type="hidden" name="serpDescription" value={initialSettings.serpDescription} />
-                    <input type="hidden" name="seoKeywords" value={initialSettings.seoKeywords.join(", ")} />
 
-                    <div className="space-y-2">
-                        <Label htmlFor="senderEmailBooking">Booking Notifications Email</Label>
-                        <Input
-                            id="senderEmailBooking"
-                            name="senderEmailBooking"
-                            defaultValue={initialSettings.senderEmailBooking}
-                            placeholder="bookings@mtbreserve.com"
-                        />
-                        <p className="text-xs text-gray-500">Used for confirmation links and booking receipts.</p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="senderEmailTech">Technical/System Email</Label>
-                        <Input
-                            id="senderEmailTech"
-                            name="senderEmailTech"
-                            defaultValue={initialSettings.senderEmailTech}
-                            placeholder="tech@mtbreserve.com"
-                        />
-                        <p className="text-xs text-gray-500">Used for password resets and system alerts.</p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="senderEmailDirect">Direct Communication Email</Label>
-                        <Input
-                            id="senderEmailDirect"
-                            name="senderEmailDirect"
-                            defaultValue={initialSettings.senderEmailDirect}
-                            placeholder="direct@mtbreserve.com"
-                        />
-                        <p className="text-xs text-gray-500">Used when sending manual emails from the admin panel.</p>
-                    </div>
-
-                    <Button type="submit" disabled={seoIsPending}>
-                        {seoIsPending ? "Saving..." : "Save Email Settings"}
-                    </Button>
-                </form>
-            </div>
 
             {/* Favicon Upload */}
             <div className="bg-white p-6 shadow rounded-lg">

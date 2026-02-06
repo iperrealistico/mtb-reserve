@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Bike, Store, ArrowRight, CheckCircle2, ChevronRight, Mail } from "lucide-react";
+import { Search, Bike, Store, ArrowRight, CheckCircle2, ChevronRight, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Image from "next/image";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { submitJoinRequest } from "./actions";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -16,7 +25,7 @@ export default function LandingPage() {
   const [searchError, setSearchError] = useState("");
 
   // Business State
-  const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
+  const [isRegistered, setIsRegistered] = useState<boolean>(true);
   const [adminSlug, setAdminSlug] = useState("");
   const [adminError, setAdminError] = useState("");
 
@@ -32,7 +41,6 @@ export default function LandingPage() {
     }
 
     // Simple stub for autocomplete/validation logic
-    // In a real app, this would query an API of active tenants
     const validLocations = ["sillico", "castelnuovo"];
 
     if (validLocations.includes(term)) {
@@ -129,30 +137,9 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {isRegistered === null ? (
-              <div className="grid gap-4">
-                <Button
-                  onClick={() => setIsRegistered(true)}
-                  variant="outline"
-                  className="h-16 text-lg justify-between px-6 border-neutral-700 bg-neutral-900 text-white hover:bg-neutral-800 hover:text-white hover:border-blue-500 transition-all group"
-                >
-                  <span>I have an account</span>
-                  <ChevronRight className="w-5 h-5 text-neutral-500 group-hover:text-blue-500 transition-colors" />
-                </Button>
-                <Button
-                  onClick={() => setIsRegistered(false)}
-                  variant="outline"
-                  className="h-16 text-lg justify-between px-6 border-neutral-700 bg-neutral-900 text-white hover:bg-neutral-800 hover:text-white hover:border-green-500 transition-all group"
-                >
-                  <span>I want to join</span>
-                  <ChevronRight className="w-5 h-5 text-neutral-500 group-hover:text-green-500 transition-colors" />
-                </Button>
-              </div>
-            ) : isRegistered ? (
+            <div className="space-y-6">
+              {/* Login Form */}
               <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <button onClick={() => setIsRegistered(null)} className="text-sm text-neutral-500 hover:text-white mb-4 flex items-center gap-1 transition-colors">
-                  ← Back
-                </button>
                 <form onSubmit={handleAdminLogin} className="space-y-4">
                   <div>
                     <Label className="text-neutral-300 mb-2 block">Enter your Shop ID (Slug)</Label>
@@ -163,7 +150,6 @@ export default function LandingPage() {
                         placeholder="e.g. myshop"
                         value={adminSlug}
                         onChange={(e) => setAdminSlug(e.target.value)}
-                        autoFocus
                       />
                     </div>
                   </div>
@@ -180,33 +166,123 @@ export default function LandingPage() {
                   </Button>
                 </form>
               </div>
-            ) : (
-              <div className="animate-in fade-in slide-in-from-right-4 duration-300 bg-neutral-900/50 p-6 rounded-2xl border border-neutral-800">
-                <button onClick={() => setIsRegistered(null)} className="text-sm text-neutral-500 hover:text-white mb-4 flex items-center gap-1 transition-colors">
-                  ← Back
-                </button>
-                <div className="flex flex-col items-center text-center gap-4">
-                  <div className="p-4 bg-green-500/10 rounded-full text-green-500">
-                    <Mail className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Let's Get You Set Up</h3>
-                  <p className="text-neutral-400 leading-relaxed">
-                    We are currently onboarding shops manually to ensure quality. Drop us a line to get your dedicated booking portal.
-                  </p>
-                  <a
-                    href="mailto:contact@mtbreserve.com"
-                    className="mt-2 text-xl font-bold text-green-400 hover:text-green-300 transition-colors underline underline-offset-4 decoration-green-500/30 hover:decoration-green-500"
-                  >
-                    contact@mtbreserve.com
-                  </a>
-                </div>
+
+              {/* Join Button & Modal */}
+              <div className="pt-6 border-t border-neutral-800">
+                <JoinRequestModal />
               </div>
-            )}
+            </div>
 
           </div>
         </section>
 
       </div >
     </div >
+  );
+}
+
+function JoinRequestModal() {
+  const [open, setOpen] = useState(false);
+  const [state, action, isPending] = useActionState(submitJoinRequest, { success: false, error: "" });
+
+  // Close modal on success (optional, or show success state inside)
+  // For now we show success state inside.
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full h-16 text-lg justify-between px-6 border-neutral-700 bg-neutral-900 text-white hover:bg-neutral-800 hover:text-white hover:border-green-500 transition-all group"
+        >
+          <span className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/10 rounded-full text-green-500">
+              <Mail className="w-5 h-5" />
+            </div>
+            I want to join
+          </span>
+          <ChevronRight className="w-5 h-5 text-neutral-500 group-hover:text-green-500 transition-colors" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px] bg-neutral-900 border-neutral-800 text-white p-0 overflow-hidden gap-0">
+        <DialogHeader className="p-6 pb-2">
+          <DialogTitle className="text-2xl font-bold">Join MTB Reserve</DialogTitle>
+          <DialogDescription className="text-neutral-400">
+            Apply to list your bike rental shop. We'll review your details and get back to you ASAP.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="p-6 pt-2 max-h-[80vh] overflow-y-auto">
+          {state.success ? (
+            <div className="flex flex-col items-center justify-center text-center py-8 space-y-4 animate-in fade-in zoom-in-95">
+              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center text-green-500 mb-2">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold">Request Sent!</h3>
+              <p className="text-neutral-400">
+                Thank you for your interest. Our team will contact you shortly to set up your account.
+              </p>
+              <Button onClick={() => setOpen(false)} className="mt-4 bg-green-600 hover:bg-green-500 text-white">
+                Close
+              </Button>
+            </div>
+          ) : (
+            <form action={action} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-neutral-300">First Name <span className="text-red-500">*</span></Label>
+                  <Input id="firstName" name="firstName" required className="bg-neutral-800 border-neutral-700" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-neutral-300">Last Name <span className="text-red-500">*</span></Label>
+                  <Input id="lastName" name="lastName" required className="bg-neutral-800 border-neutral-700" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="organization" className="text-neutral-300">Organization / Shop Name <span className="text-red-500">*</span></Label>
+                <Input id="organization" name="organization" required className="bg-neutral-800 border-neutral-700" placeholder="e.g. Sillico MTB" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-neutral-300">Address</Label>
+                <Input id="address" name="address" className="bg-neutral-800 border-neutral-700" placeholder="Street, City, Zip" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-neutral-300">Phone <span className="text-red-500">*</span></Label>
+                  <Input id="phone" name="phone" required className="bg-neutral-800 border-neutral-700" placeholder="+39 345..." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-neutral-300">Email <span className="text-red-500">*</span></Label>
+                  <Input id="email" name="email" type="email" required className="bg-neutral-800 border-neutral-700" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="message" className="text-neutral-300">Message (Optional)</Label>
+                <Textarea id="message" name="message" className="bg-neutral-800 border-neutral-700 min-h-[100px]" placeholder="Tell us about your fleet..." />
+              </div>
+
+              {state.error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                  {state.error}
+                </div>
+              )}
+
+              <div className="pt-2">
+                <Button type="submit" disabled={isPending} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold h-12 text-md">
+                  {isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</> : "Submit Request"}
+                </Button>
+                <p className="text-[10px] text-neutral-500 text-center mt-3">
+                  Your data is only used to reply to this request and not for marketing purposes.
+                </p>
+              </div>
+            </form>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

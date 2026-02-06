@@ -163,10 +163,27 @@ model EventLog {
 }
 
 model EmailTemplate {
-  id        String   @id // e.g., "confirmation", "recap", "onboarding", "password_reset", "manual_admin", "notification"
-  subject   String
-  html      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id // e.g., "confirmation", "recap", "onboarding", "password_reset", "manual_admin", "notification", "signup_request"
+  subject     String
+  senderName  String?  // Optional sender alias e.g. "MTB Reserve"
+  senderEmail String?  // Optional specific sender e.g. "bookings@mtbreserve.com"
+  html        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemSettings {
+  id                 String   @id @default("settings") // Singleton
+  
+  // SEO
+  serpTitle          String   @default("MTB Reserve - Bike Rental Platform")
+  serpDescription    String   @default("Book mountain bikes and e-bikes from local rental shops. Easy online reservations.")
+  seoKeywords        String[] @default(["bike rental", "mountain bike", "e-bike", "booking"])
+  
+  // Branding
+  faviconUrl         String?
+  socialImageUrl     String?
+  
+  updatedAt          DateTime @updatedAt
 }
 

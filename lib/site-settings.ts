@@ -1,6 +1,4 @@
 import { db } from "@/lib/db";
-import fs from "fs/promises";
-import path from "path";
 
 export interface SiteSettings {
     serpTitle: string;
@@ -8,43 +6,56 @@ export interface SiteSettings {
     seoKeywords: string[];
     faviconUrl?: string;
     socialImageUrl?: string;
-    // Email Configuration
-    senderEmailBooking?: string;
-    senderEmailTech?: string;
-    senderEmailDirect?: string;
-    updatedAt?: string;
+    // Email config removed from here as per plan, now in templates
 }
-
-const SETTINGS_FILE = path.join(process.cwd(), "public", "site-settings.json");
 
 const DEFAULT_SETTINGS: SiteSettings = {
     serpTitle: "MTB Reserve - Bike Rental Platform",
     serpDescription: "Book mountain bikes and e-bikes from local rental shops. Easy online reservations.",
     seoKeywords: ["bike rental", "mountain bike", "e-bike", "booking"],
-    senderEmailBooking: "bookings@mtbreserve.com",
-    senderEmailTech: "tech@mtbreserve.com",
-    senderEmailDirect: "direct@mtbreserve.com",
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
     try {
-        const data = await fs.readFile(SETTINGS_FILE, "utf-8");
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
-    } catch {
+        const settings = await db.systemSettings.findUnique({
+            where: { id: "settings" }
+        });
+
+        if (!settings) return DEFAULT_SETTINGS;
+
+        return {
+            serpTitle: settings.serpTitle,
+            serpDescription: settings.serpDescription,
+            seoKeywords: settings.seoKeywords,
+            faviconUrl: settings.faviconUrl || undefined,
+            socialImageUrl: settings.socialImageUrl || undefined,
+        };
+    } catch (e) {
+        console.error("Failed to fetch system settings:", e);
         return DEFAULT_SETTINGS;
     }
 }
 
 export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise<void> {
-    const current = await getSiteSettings();
-    const updated = {
-        ...current,
-        ...settings,
-        updatedAt: new Date().toISOString(),
-    };
-
-    await fs.writeFile(SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf-8");
+    await db.systemSettings.upsert({
+        where: { id: "settings" },
+        create: {
+            serpTitle: settings.serpTitle || DEFAULT_SETTINGS.serpTitle,
+            serpDescription: settings.serpDescription || DEFAULT_SETTINGS.serpDescription,
+            seoKeywords: settings.seoKeywords || DEFAULT_SETTINGS.seoKeywords,
+            faviconUrl: settings.faviconUrl,
+            socialImageUrl: settings.socialImageUrl,
+        },
+        update: {
+            serpTitle: settings.serpTitle,
+            serpDescription: settings.serpDescription,
+            seoKeywords: settings.seoKeywords,
+            faviconUrl: settings.faviconUrl,
+            socialImageUrl: settings.socialImageUrl,
+        }
+    });
 }
+
 
 // Generate booking code (8 chars, alphanumeric, no ambiguous chars)
 const BOOKING_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excludes 0, O, I, 1

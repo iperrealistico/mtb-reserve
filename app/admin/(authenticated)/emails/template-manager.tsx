@@ -62,6 +62,14 @@ export const TEMPLATES: TemplateConfig[] = [
         placeholders: ["{{tenantName}}", "{{link}}"],
         defaultSubject: "Reset Password for {{tenantName}}",
         defaultHtml: `<p>You requested a password reset. Click below to continue:</p><p><a href="{{link}}">{{link}}</a></p>`
+    },
+    {
+        id: "signup_request",
+        label: "Homepage Join Request",
+        description: "Sent to the new user after they request to join via the homepage form.",
+        placeholders: ["{{firstName}}"],
+        defaultSubject: "We received your request!",
+        defaultHtml: `<h1>Hi {{firstName}},</h1><p>Thanks for your interest in joining MTB Reserve. We have received your details and will get back to you shortly.</p>`
     }
 ];
 
@@ -72,27 +80,40 @@ export default function TemplateEditor({ initialTemplates }: { initialTemplates:
     const activeConfig = TEMPLATES.find(t => t.id === selectedId)!;
     const initialData = initialTemplates.find(t => t.id === selectedId) || {
         subject: activeConfig.defaultSubject,
-        html: activeConfig.defaultHtml
+        html: activeConfig.defaultHtml,
+        senderName: "",
+        senderEmail: ""
     };
 
     const [subject, setSubject] = useState(initialData.subject);
     const [html, setHtml] = useState(initialData.html);
+    const [senderName, setSenderName] = useState(initialData.senderName || "");
+    const [senderEmail, setSenderEmail] = useState(initialData.senderEmail || "");
 
     // Sync state when switching templates
     const handleSelect = (id: string) => {
         const config = TEMPLATES.find(t => t.id === id)!;
         const data = initialTemplates.find(t => t.id === id) || {
             subject: config.defaultSubject,
-            html: config.defaultHtml
+            html: config.defaultHtml,
+            senderName: "",
+            senderEmail: ""
         };
         setSelectedId(id);
         setSubject(data.subject);
         setHtml(data.html);
+        setSenderName(data.senderName || "");
+        setSenderEmail(data.senderEmail || "");
     };
 
     const handleSave = async () => {
+        if (senderEmail && !senderEmail.endsWith("@mtbreserve.com")) {
+            toast.error("Sender email must end with @mtbreserve.com");
+            return;
+        }
+
         setLoading(true);
-        const result = await saveEmailTemplateAction(selectedId, subject, html);
+        const result = await saveEmailTemplateAction(selectedId, subject, html, senderName, senderEmail);
         if (result.success) {
             toast.success("Template saved successfully");
             // Optionally update local list of initialTemplates if we want to keep it in sync without re-fetching
@@ -106,6 +127,8 @@ export default function TemplateEditor({ initialTemplates }: { initialTemplates:
         if (confirm("Restore to default? This will clear your customizations for this template.")) {
             setSubject(activeConfig.defaultSubject);
             setHtml(activeConfig.defaultHtml);
+            setSenderName("");
+            setSenderEmail("");
         }
     };
 
@@ -119,8 +142,8 @@ export default function TemplateEditor({ initialTemplates }: { initialTemplates:
                         key={t.id}
                         onClick={() => handleSelect(t.id)}
                         className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-200 flex items-center gap-3 ${selectedId === t.id
-                                ? "bg-black text-white shadow-lg shadow-black/10 scale-[1.02]"
-                                : "bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-100"
+                            ? "bg-black text-white shadow-lg shadow-black/10 scale-[1.02]"
+                            : "bg-white text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-100"
                             }`}
                     >
                         <div className={`p-1.5 rounded-lg ${selectedId === t.id ? "bg-white/10" : "bg-gray-100 group-hover:bg-white"}`}>
@@ -150,6 +173,31 @@ export default function TemplateEditor({ initialTemplates }: { initialTemplates:
                     </div>
 
                     <div className="space-y-4">
+                        {/* Sender Configuration */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                            <div className="space-y-2">
+                                <Label htmlFor="senderName" className="text-xs font-bold uppercase text-gray-400 tracking-wider">Sender Name</Label>
+                                <Input
+                                    id="senderName"
+                                    value={senderName}
+                                    onChange={(e) => setSenderName(e.target.value)}
+                                    className="rounded-lg bg-white"
+                                    placeholder="e.g. MTB Reserve Team"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="senderEmail" className="text-xs font-bold uppercase text-gray-400 tracking-wider">Sender Email</Label>
+                                <Input
+                                    id="senderEmail"
+                                    value={senderEmail}
+                                    onChange={(e) => setSenderEmail(e.target.value)}
+                                    className="rounded-lg bg-white"
+                                    placeholder="e.g. support@mtbreserve.com"
+                                />
+                                <p className="text-[10px] text-gray-500">Must end in @mtbreserve.com</p>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="subject" className="text-xs font-bold uppercase text-gray-400 tracking-wider">Subject Line</Label>
                             <Input
