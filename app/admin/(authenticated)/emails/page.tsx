@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import TemplateManager from "./template-manager";
 import { getEmailTemplatesAction } from "./actions";
+import { InboxClient } from "./inbox-client";
 
 export const dynamic = "force-dynamic";
 
@@ -12,39 +13,57 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
     const page = typeof params.page === 'string' ? Number(params.page) : 1;
     const limit = 50;
 
-    const where: any = {
-        eventType: { in: ["EMAIL_SENT", "EMAIL_FAILED", "EMAIL_SENT_MOCK"] }
-    };
+    // Fetch data based on tab
+    let emails: any[] = [];
+    let savedTemplates: any[] = [];
+    let requests: any[] = [];
 
-    if (tenantId) where.tenantId = tenantId;
+    if (activeTab === "logs") {
+        const where: any = {
+            eventType: { in: ["EMAIL_SENT", "EMAIL_FAILED", "EMAIL_SENT_MOCK"] }
+        };
+        if (tenantId) where.tenantId = tenantId;
 
-    const [emails, savedTemplates] = await Promise.all([
-        db.eventLog.findMany({
+        emails = await db.eventLog.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             take: limit,
             skip: (page - 1) * limit
-        }),
-        getEmailTemplatesAction()
-    ]);
+        });
+    } else if (activeTab === "templates") {
+        savedTemplates = await getEmailTemplatesAction();
+    } else if (activeTab === "inbox") {
+        requests = await (db as any).signupRequest.findMany({
+            orderBy: { createdAt: "desc" }
+        });
+    }
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div>
                 <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Email Console</h1>
-                <p className="text-base text-gray-500 mt-2">Monitor delivery and customize automated communication.</p>
+                <p className="text-base text-gray-500 mt-2">Monitor delivery, manage inbox, and customize communication.</p>
             </div>
 
             {/* Tabs */}
             <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
                 <a
                     href="/admin/emails?tab=logs"
-                    className={`pb-4 px-6 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === "logs"
+                    className={`pb-4 px-6 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === "logs" || !activeTab
                         ? "text-black border-b-2 border-black"
                         : "text-gray-400 hover:text-gray-600"
                         }`}
                 >
                     Delivery Logs
+                </a>
+                <a
+                    href="/admin/emails?tab=inbox"
+                    className={`pb-4 px-6 text-sm font-bold transition-all relative whitespace-nowrap ${activeTab === "inbox"
+                        ? "text-black border-b-2 border-black"
+                        : "text-gray-400 hover:text-gray-600"
+                        }`}
+                >
+                    Inbox
                 </a>
                 <a
                     href="/admin/emails?tab=templates"
@@ -57,7 +76,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
                 </a>
             </div>
 
-            {activeTab === "logs" ? (
+            {activeTab === "logs" && (
                 <div className="border border-gray-100 rounded-[2rem] bg-white shadow-sm overflow-hidden">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 border-b border-gray-100 text-gray-400 uppercase text-[10px] font-black tracking-widest">
@@ -119,7 +138,15 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
                         </tbody>
                     </table>
                 </div>
-            ) : (
+            )}
+
+            {activeTab === "inbox" && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                    <InboxClient requests={requests} />
+                </div>
+            )}
+
+            {activeTab === "templates" && (
                 <div className="animate-in fade-in slide-in-from-top-4 duration-500">
                     <TemplateManager initialTemplates={savedTemplates} />
                 </div>
@@ -127,3 +154,4 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
         </div>
     );
 }
+

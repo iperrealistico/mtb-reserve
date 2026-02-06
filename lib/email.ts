@@ -50,7 +50,13 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
 
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
-        await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock email: ${subject}`, metadata: { to } });
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT_MOCK",
+            message: `Mock email: ${subject}`,
+            metadata: { to, subject, type: "confirmation_link", providerId: "mock-id" }
+        });
         return { success: true };
     }
 
@@ -74,7 +80,7 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
             actorType: "SYSTEM",
             eventType: "EMAIL_SENT",
             message: "Confirmation email sent",
-            metadata: { to, providerId: data?.id, type: "confirmation_link" }
+            metadata: { to, subject, providerId: data?.id, type: "confirmation_link" }
         });
         return { success: true };
     } catch (error: unknown) {
@@ -84,7 +90,7 @@ export async function sendConfirmationLink(to: string, slug: string, token: stri
             actorType: "SYSTEM",
             eventType: "EMAIL_FAILED",
             message: "Failed to send confirmation email",
-            metadata: { to, error: message }
+            metadata: { to, subject, type: "confirmation_link", error: message }
         });
         return { error };
     }
@@ -107,7 +113,13 @@ export async function sendBookingRecap(to: string, booking: any) {
 
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
-        await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock recap email`, metadata: { to } });
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT_MOCK",
+            message: `Mock recap email`,
+            metadata: { to, subject, type: "recap", providerId: "mock-id" }
+        });
         return { success: true };
     }
 
@@ -130,7 +142,7 @@ export async function sendBookingRecap(to: string, booking: any) {
             actorType: "SYSTEM",
             eventType: "EMAIL_SENT",
             message: "Booking recap email sent",
-            metadata: { to, providerId: data?.id, type: "recap" }
+            metadata: { to, subject, providerId: data?.id, type: "recap" }
         });
         return { success: true };
     } catch (error: unknown) {
@@ -140,7 +152,7 @@ export async function sendBookingRecap(to: string, booking: any) {
             actorType: "SYSTEM",
             eventType: "EMAIL_FAILED",
             message: "Failed to send recap email",
-            metadata: { to, error: message }
+            metadata: { to, subject, type: "recap", error: message }
         });
         return { error };
     }
@@ -163,6 +175,13 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
 
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL ADMIN] To: ${tenantEmail} | From: ${from} | Subject: ${subject}`);
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT_MOCK",
+            message: `Mock admin notification`,
+            metadata: { to: tenantEmail, subject, type: "admin_notify", providerId: "mock-id" }
+        });
         return { success: true };
     }
 
@@ -185,7 +204,7 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
             actorType: "SYSTEM",
             eventType: "EMAIL_SENT",
             message: "Admin notification email sent",
-            metadata: { to: tenantEmail, providerId: data?.id, type: "admin_notify" }
+            metadata: { to: tenantEmail, subject, providerId: data?.id, type: "admin_notify" }
         });
         return { success: true };
     } catch (error: unknown) {
@@ -195,53 +214,71 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
             actorType: "SYSTEM",
             eventType: "EMAIL_FAILED",
             message: "Failed to send admin notification",
-            metadata: { to: tenantEmail, error: message }
+            metadata: { to: tenantEmail, subject, type: "admin_notify", error: message }
         });
         return { error };
     }
 }
 
 // Helper for logging mock emails
-async function logMockEmail(to: string, from: string, subject: string, actorType: "GUEST" | "SYSTEM" = "GUEST", eventType: string = "EMAIL_SENT_MOCK", message: string = "Mock email") {
+async function logMockEmail(to: string, from: string, subject: string, actorType: "GUEST" | "SYSTEM" = "GUEST", eventType: string = "EMAIL_SENT_MOCK", message: string = "Mock email", type: string = "generic") {
     console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
-    await logEvent({ level: "INFO", actorType, eventType, message: `${message}: ${subject}`, metadata: { to } });
+    await logEvent({
+        level: "INFO",
+        actorType,
+        eventType,
+        message: `${message}: ${subject}`,
+        metadata: { to, subject, type, providerId: "mock-id" }
+    });
 }
 
 export async function sendSignupRequest(formData: any) {
     const { firstName, lastName, organization, email, phone, address, message } = formData;
 
     // 1. Get Settings for Admin Email
-    const settings = await getSiteSettings(); // Assuming getSiteSettings is defined elsewhere
-    const adminEmail = settings.adminNotificationEmail;
+    const settings = await getSiteSettings();
+    const adminEmail = settings.adminNotificationEmail || "contact@mtbreserve.com";
 
     // 2. Prepare Template Data
     const data = { firstName, lastName, organization, email, phone, address, message };
 
+    let userResData: any = {};
+    let adminResData: any = {};
+
     // 3. Send User Acknowledgment
-    const userPromise = (async () => {
+    try {
         const { subject, html, from } = await getTemplateContent("signup_request", data, {
             subject: "We received your request!",
             html: `<h1>Hi ${firstName},</h1><p>Thanks for your interest. We received your request: ${organization}.</p>`
         });
 
-        if (process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY) { // Use SHOULD_LOG logic
-            await logMockEmail(email, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup user email");
-            return { success: true };
-        }
+        if (SHOULD_LOG) {
+            await logMockEmail(email, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup user email", "signup_request_user");
+        } else {
+            const { data: resendData, error: resendError } = await resend.emails.send({
+                from,
+                to: email,
+                subject,
+                html,
+                tags: [{ name: 'category', value: 'signup_request_user' }]
+            });
+            if (resendError) throw resendError;
+            userResData = resendData;
 
-        const { data: resendData, error: resendError } = await resend.emails.send({
-            from,
-            to: email,
-            subject,
-            html,
-            tags: [{ name: 'category', value: 'signup_request_user' }]
-        });
-        if (resendError) throw resendError;
-        return { data: resendData, error: resendError };
-    })();
+            await logEvent({
+                level: "INFO",
+                actorType: "SYSTEM",
+                eventType: "EMAIL_SENT",
+                message: "Signup acknowledgement sent to user",
+                metadata: { to: email, subject, type: "signup_request_user", providerId: resendData?.id }
+            });
+        }
+    } catch (e) {
+        console.error("Failed to send signup user email", e);
+    }
 
     // 4. Send Admin Notification
-    const adminPromise = (async () => {
+    try {
         const { subject, html, from } = await getTemplateContent("signup_request_admin", data, {
             subject: `New Join Request: ${organization || firstName}`,
             html: `
@@ -256,56 +293,44 @@ export async function sendSignupRequest(formData: any) {
             `
         });
 
-        if (process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY) { // Use SHOULD_LOG logic
-            await logMockEmail(adminEmail, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup admin email");
-            return { success: true };
+        if (SHOULD_LOG) {
+            await logMockEmail(adminEmail, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup admin email", "signup_request_admin");
+        } else {
+            const { data: resendData, error: resendError } = await resend.emails.send({
+                from,
+                to: adminEmail,
+                subject,
+                html,
+                tags: [{ name: 'category', value: 'signup_request_admin' }]
+            });
+            if (resendError) throw resendError;
+            adminResData = resendData;
+
+            await logEvent({
+                level: "INFO",
+                actorType: "SYSTEM",
+                eventType: "EMAIL_SENT",
+                message: "Signup notification sent to admin",
+                metadata: { to: adminEmail, subject, type: "signup_request_admin", providerId: resendData?.id }
+            });
         }
-
-        const { data: resendData, error: resendError } = await resend.emails.send({
-            from,
-            to: adminEmail,
-            subject,
-            html,
-            tags: [{ name: 'category', value: 'signup_request_admin' }]
-        });
-        if (resendError) throw resendError;
-        return { data: resendData, error: resendError };
-    })();
-
-    try {
-        const [userRes, adminRes] = await Promise.all([userPromise, adminPromise]);
-
-        await logEvent({
-            level: "INFO",
-            actorType: "GUEST",
-            eventType: "EMAIL_SENT",
-            message: "Signup request processed (User + Admin)",
-            metadata: {
-                userEmail: email,
-                adminEmail: adminEmail,
-                userResult: (userRes as any)?.data?.id || "mock",
-                adminResult: (adminRes as any)?.data?.id || "mock"
-            }
-        });
-
-        return { success: true };
-    } catch (error: unknown) {
-        console.error("Signup email error:", error);
-        await logEvent({
-            level: "ERROR",
-            actorType: "GUEST",
-            eventType: "EMAIL_FAILED",
-            message: "Signup request failed",
-            metadata: { error: String(error) }
-        });
-        return { error };
+    } catch (e) {
+        console.error("Failed to send signup admin email", e);
     }
+
+    return { success: true };
 }
 
 export async function sendEmail({ to, subject, html, category = 'generic', entityId }: { to: string, subject: string, html: string, category?: string, entityId?: string }) {
     if (SHOULD_LOG) {
         console.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject}`);
-        await logEvent({ level: "INFO", actorType: "SYSTEM", eventType: "EMAIL_SENT_MOCK", message: `Mock email: ${subject}`, metadata: { to } });
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT_MOCK",
+            message: `Mock email: ${subject}`,
+            metadata: { to, subject, type: category, providerId: "mock-id" }
+        });
         return { success: true };
     }
 
@@ -340,7 +365,7 @@ export async function sendEmail({ to, subject, html, category = 'generic', entit
             actorType: "SYSTEM",
             eventType: "EMAIL_FAILED",
             message: "Failed to send email",
-            metadata: { to, subject, error: message }
+            metadata: { to, subject, type: category, error: message }
         });
         return { error };
     }

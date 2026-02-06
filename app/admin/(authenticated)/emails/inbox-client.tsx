@@ -22,7 +22,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { deleteRequestAction, updateRequestStatusAction } from "./actions";
+import { deleteRequestAction, updateRequestStatusAction } from "./inbox-actions";
 
 interface SignupRequest {
     id: string;

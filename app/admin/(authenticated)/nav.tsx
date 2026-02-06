@@ -10,7 +10,6 @@ export default function SuperAdminNav() {
 
     const links = [
         { href: "/admin", label: "Tenants", icon: Building2, exact: true },
-        { href: "/admin/inbox", label: "Inbox", icon: Mail },
         { href: "/admin/settings", label: "Settings", icon: Settings },
         { href: "/admin/emails", label: "Emails", icon: Mail },
         { href: "/admin/logs", label: "Logs", icon: Terminal },

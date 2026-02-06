@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { getSiteSettings, saveSiteSettings } from "@/lib/site-settings";
 import { revalidatePath } from "next/cache";
 import { put } from "@vercel/blob";
+import sharp from "sharp";
 
 async function ensureSuperAdmin() {
     const session = await getSession();
@@ -129,11 +130,20 @@ export async function uploadFaviconAction(_prevState: unknown, formData: FormDat
             return { success: false, error: "Invalid file type. Use PNG, ICO, SVG, or JPEG." };
         }
 
-        const filename = `favicon-${Date.now()}-${file.name}`;
+        // Resize and convert to PNG using sharp
+        const buffer = Buffer.from(await file.arrayBuffer());
+        // Resize to 192x192 as a standard favicon size (or keep strict ICO if needed, but PNG is widely supported)
+        const resizedBuffer = await sharp(buffer)
+            .resize(192, 192, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .toFormat('png')
+            .toBuffer();
+
+        const filename = `favicon-${Date.now()}.png`;
 
         // Upload to Vercel Blob
-        const blob = await put(filename, file, {
+        const blob = await put(filename, resizedBuffer, {
             access: 'public',
+            contentType: 'image/png'
         });
 
         // Update settings
@@ -165,11 +175,19 @@ export async function uploadSocialImageAction(_prevState: unknown, formData: For
             return { success: false, error: "Invalid file type. Use PNG, JPEG, or WebP." };
         }
 
-        const filename = `og-image-${Date.now()}-${file.name}`;
+        // Resize and convert using sharp
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const resizedBuffer = await sharp(buffer)
+            .resize(1200, 630, { fit: 'cover' })
+            .toFormat('jpeg', { quality: 80 })
+            .toBuffer();
+
+        const filename = `og-image-${Date.now()}.jpg`;
 
         // Upload to Vercel Blob
-        const blob = await put(filename, file, {
+        const blob = await put(filename, resizedBuffer, {
             access: 'public',
+            contentType: 'image/jpeg'
         });
 
         // Update settings
