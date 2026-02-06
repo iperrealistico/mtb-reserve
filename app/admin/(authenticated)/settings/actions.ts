@@ -3,8 +3,7 @@
 import { getSession } from "@/lib/auth";
 import { getSiteSettings, saveSiteSettings } from "@/lib/site-settings";
 import { revalidatePath } from "next/cache";
-import fs from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 
 async function ensureSuperAdmin() {
     const session = await getSession();
@@ -130,29 +129,22 @@ export async function uploadFaviconAction(_prevState: unknown, formData: FormDat
             return { success: false, error: "Invalid file type. Use PNG, ICO, SVG, or JPEG." };
         }
 
-        // Read file as buffer
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        const filename = `favicon-${Date.now()}-${file.name}`;
 
-        // Save to public folder
-        const ext = file.type === "image/x-icon" ? "ico" :
-            file.type === "image/svg+xml" ? "svg" :
-                file.type === "image/png" ? "png" : "jpg";
-
-        const filename = `favicon-uploaded.${ext}`;
-        const filepath = path.join(process.cwd(), "public", filename);
-
-        await fs.writeFile(filepath, buffer);
+        // Upload to Vercel Blob
+        const blob = await put(filename, file, {
+            access: 'public',
+        });
 
         // Update settings
         await saveSiteSettings({
-            faviconUrl: `/${filename}`,
+            faviconUrl: blob.url,
         });
 
         revalidatePath("/");
         revalidatePath("/admin/settings");
 
-        return { success: true, error: "", url: `/${filename}` };
+        return { success: true, error: "", url: blob.url };
     } catch (error: unknown) {
         return { success: false, error: (error as Error).message || "Failed to upload favicon" };
     }
@@ -173,28 +165,22 @@ export async function uploadSocialImageAction(_prevState: unknown, formData: For
             return { success: false, error: "Invalid file type. Use PNG, JPEG, or WebP." };
         }
 
-        // Read file as buffer
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        const filename = `og-image-${Date.now()}-${file.name}`;
 
-        // Save to public folder
-        const ext = file.type === "image/png" ? "png" :
-            file.type === "image/webp" ? "webp" : "jpg";
-
-        const filename = `og-image.${ext}`;
-        const filepath = path.join(process.cwd(), "public", filename);
-
-        await fs.writeFile(filepath, buffer);
+        // Upload to Vercel Blob
+        const blob = await put(filename, file, {
+            access: 'public',
+        });
 
         // Update settings
         await saveSiteSettings({
-            socialImageUrl: `/${filename}`,
+            socialImageUrl: blob.url,
         });
 
         revalidatePath("/");
         revalidatePath("/admin/settings");
 
-        return { success: true, error: "", url: `/${filename}` };
+        return { success: true, error: "", url: blob.url };
     } catch (error: unknown) {
         return { success: false, error: (error as Error).message || "Failed to upload image" };
     }
