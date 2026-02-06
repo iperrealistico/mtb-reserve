@@ -201,52 +201,94 @@ export async function sendAdminNotification(tenantEmail: string, booking: any) {
     }
 }
 
+// Helper for logging mock emails
+async function logMockEmail(to: string, from: string, subject: string, actorType: "GUEST" | "SYSTEM" = "GUEST", eventType: string = "EMAIL_SENT_MOCK", message: string = "Mock email") {
+    console.log(`[MOCK EMAIL] To: ${to} | From: ${from} | Subject: ${subject}`);
+    await logEvent({ level: "INFO", actorType, eventType, message: `${message}: ${subject}`, metadata: { to } });
+}
+
 export async function sendSignupRequest(formData: any) {
     const { firstName, lastName, organization, email, phone, address, message } = formData;
 
-    // Send TO the Signup Bot / Super Admin
-    // For now, hardcoded to a common address, or we could fetch a separate setting if we had one.
-    // Using a generic one or the same as Direct for now.
-    const recipient = "signup@mtbreserve.com";
+    // 1. Get Settings for Admin Email
+    const settings = await getSiteSettings(); // Assuming getSiteSettings is defined elsewhere
+    const adminEmail = settings.adminNotificationEmail;
 
-    const { subject, html, from } = await getTemplateContent("signup_request", {
-        firstName, lastName, organization, email, phone, address, message
-    }, {
-        subject: `New Join Request: ${organization || firstName}`,
-        html: `<h2>New Join Request</h2>
-        <p><strong>Name:</strong> ${firstName} ${lastName}</p>
-        <p><strong>Org:</strong> ${organization}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Address:</strong> ${address}</p>
-        <p><strong>Message:</strong> ${message}</p>`
-    });
+    // 2. Prepare Template Data
+    const data = { firstName, lastName, organization, email, phone, address, message };
 
-    if (SHOULD_LOG) {
-        console.log(`[MOCK EMAIL SIGNUP] To: ${recipient} | From: ${from} | Subject: ${subject}`);
-        await logEvent({ level: "INFO", actorType: "GUEST", eventType: "EMAIL_SENT_MOCK", message: `Mock signup email`, metadata: { to: recipient } });
-        return { success: true };
-    }
+    // 3. Send User Acknowledgment
+    const userPromise = (async () => {
+        const { subject, html, from } = await getTemplateContent("signup_request", data, {
+            subject: "We received your request!",
+            html: `<h1>Hi ${firstName},</h1><p>Thanks for your interest. We received your request: ${organization}.</p>`
+        });
 
-    try {
-        const { data, error } = await resend.emails.send({
+        if (process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY) { // Use SHOULD_LOG logic
+            await logMockEmail(email, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup user email");
+            return { success: true };
+        }
+
+        const { data: resendData, error: resendError } = await resend.emails.send({
             from,
-            to: recipient,
+            to: email,
             subject,
             html,
-            tags: [{ name: 'category', value: 'signup_request' }]
+            tags: [{ name: 'category', value: 'signup_request_user' }]
         });
-        if (error) throw error;
+        if (resendError) throw resendError;
+        return { data: resendData, error: resendError };
+    })();
+
+    // 4. Send Admin Notification
+    const adminPromise = (async () => {
+        const { subject, html, from } = await getTemplateContent("signup_request_admin", data, {
+            subject: `New Join Request: ${organization || firstName}`,
+            html: `<h2>New Join Request</h2><p>Name: ${firstName} ${lastName}</p><p>Org: ${organization}</p><p>Email: ${email}</p>`
+        });
+
+        if (process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY) { // Use SHOULD_LOG logic
+            await logMockEmail(adminEmail, from, subject, "GUEST", "EMAIL_SENT_MOCK", "Mock signup admin email");
+            return { success: true };
+        }
+
+        const { data: resendData, error: resendError } = await resend.emails.send({
+            from,
+            to: adminEmail,
+            subject,
+            html,
+            tags: [{ name: 'category', value: 'signup_request_admin' }]
+        });
+        if (resendError) throw resendError;
+        return { data: resendData, error: resendError };
+    })();
+
+    try {
+        const [userRes, adminRes] = await Promise.all([userPromise, adminPromise]);
 
         await logEvent({
             level: "INFO",
             actorType: "GUEST",
             eventType: "EMAIL_SENT",
-            message: "Signup request sent",
-            metadata: { to: recipient, providerId: data?.id }
+            message: "Signup request processed (User + Admin)",
+            metadata: {
+                userEmail: email,
+                adminEmail: adminEmail,
+                userResult: (userRes as any)?.data?.id || "mock",
+                adminResult: (adminRes as any)?.data?.id || "mock"
+            }
         });
+
         return { success: true };
     } catch (error: unknown) {
+        console.error("Signup email error:", error);
+        await logEvent({
+            level: "ERROR",
+            actorType: "GUEST",
+            eventType: "EMAIL_FAILED",
+            message: "Signup request failed",
+            metadata: { error: String(error) }
+        });
         return { error };
     }
 }

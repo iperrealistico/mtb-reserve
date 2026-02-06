@@ -183,6 +183,9 @@ model SystemSettings {
   // Branding
   faviconUrl         String?
   socialImageUrl     String?
+
+  // Notifications
+  adminNotificationEmail String? @default("contact@mtbreserve.com")
   
   updatedAt          DateTime @updatedAt
 }

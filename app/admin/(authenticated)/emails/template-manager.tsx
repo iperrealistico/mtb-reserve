@@ -65,11 +65,25 @@ export const TEMPLATES: TemplateConfig[] = [
     },
     {
         id: "signup_request",
-        label: "Homepage Join Request",
+        label: "Homepage Join Request (User)",
         description: "Sent to the new user after they request to join via the homepage form.",
         placeholders: ["{{firstName}}"],
         defaultSubject: "We received your request!",
         defaultHtml: `<h1>Hi {{firstName}},</h1><p>Thanks for your interest in joining MTB Reserve. We have received your details and will get back to you shortly.</p>`
+    },
+    {
+        id: "signup_request_admin",
+        label: "Homepage Join Request (Admin)",
+        description: "Sent to the super admin when a new user requests to join.",
+        placeholders: ["{{firstName}}", "{{lastName}}", "{{organization}}", "{{email}}", "{{phone}}", "{{address}}", "{{message}}"],
+        defaultSubject: "New Join Request: {{organization}}",
+        defaultHtml: `<h2>New Join Request</h2>
+        <p><strong>Name:</strong> {{firstName}} {{lastName}}</p>
+        <p><strong>Org:</strong> {{organization}}</p>
+        <p><strong>Email:</strong> {{email}}</p>
+        <p><strong>Phone:</strong> {{phone}}</p>
+        <p><strong>Address:</strong> {{address}}</p>
+        <p><strong>Message:</strong> {{message}}</p>`
     }
 ];
 

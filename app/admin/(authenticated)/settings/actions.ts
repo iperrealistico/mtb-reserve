@@ -92,6 +92,7 @@ export async function updateSiteSettingsAction(_prevState: unknown, formData: Fo
         const serpTitle = formData.get("serpTitle") as string;
         const serpDescription = formData.get("serpDescription") as string;
         const seoKeywordsRaw = formData.get("seoKeywords") as string;
+        const adminNotificationEmail = formData.get("adminNotificationEmail") as string;
 
         const seoKeywords = seoKeywordsRaw
             .split(",")
@@ -102,6 +103,7 @@ export async function updateSiteSettingsAction(_prevState: unknown, formData: Fo
             serpTitle: serpTitle || undefined,
             serpDescription: serpDescription || undefined,
             seoKeywords: seoKeywords.length > 0 ? seoKeywords : undefined,
+            adminNotificationEmail: adminNotificationEmail || undefined,
         });
 
         revalidatePath("/");

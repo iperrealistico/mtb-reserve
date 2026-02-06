@@ -6,6 +6,7 @@ export interface SiteSettings {
     seoKeywords: string[];
     faviconUrl?: string;
     socialImageUrl?: string;
+    adminNotificationEmail: string;
     // Email config removed from here as per plan, now in templates
 }
 
@@ -13,6 +14,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
     serpTitle: "MTB Reserve - Bike Rental Platform",
     serpDescription: "Book mountain bikes and e-bikes from local rental shops. Easy online reservations.",
     seoKeywords: ["bike rental", "mountain bike", "e-bike", "booking"],
+    adminNotificationEmail: "contact@mtbreserve.com",
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -29,6 +31,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             seoKeywords: settings.seoKeywords,
             faviconUrl: settings.faviconUrl || undefined,
             socialImageUrl: settings.socialImageUrl || undefined,
+            adminNotificationEmail: settings.adminNotificationEmail || DEFAULT_SETTINGS.adminNotificationEmail,
         };
     } catch (e) {
         console.error("Failed to fetch system settings:", e);
@@ -45,6 +48,7 @@ export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise
             seoKeywords: settings.seoKeywords || DEFAULT_SETTINGS.seoKeywords,
             faviconUrl: settings.faviconUrl,
             socialImageUrl: settings.socialImageUrl,
+            adminNotificationEmail: settings.adminNotificationEmail || DEFAULT_SETTINGS.adminNotificationEmail,
         },
         update: {
             serpTitle: settings.serpTitle,
@@ -52,6 +56,7 @@ export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise
             seoKeywords: settings.seoKeywords,
             faviconUrl: settings.faviconUrl,
             socialImageUrl: settings.socialImageUrl,
+            adminNotificationEmail: settings.adminNotificationEmail,
         }
     });
 }
