@@ -29,12 +29,7 @@ export async function submitJoinRequest(_prevState: unknown, formData: FormData)
         });
 
         // 2. Send Emails
-        const res = await sendSignupRequest(rawData);
-        if (res.error) {
-            // We still return success to the user because the DB save worked, 
-            // but we log the email error internally (sendSignupRequest does this).
-            console.error("Email sending failed after DB save", res.error);
-        }
+        await sendSignupRequest(rawData);
 
         return { success: true };
     } catch (error) {
