@@ -130,32 +130,66 @@ export async function uploadFaviconAction(_prevState: unknown, formData: FormDat
             return { success: false, error: "Invalid file type. Use PNG, ICO, SVG, or JPEG." };
         }
 
-        // Resize and convert to PNG using sharp
         const buffer = Buffer.from(await file.arrayBuffer());
-        // Resize to 192x192 as a standard favicon size (or keep strict ICO if needed, but PNG is widely supported)
-        const resizedBuffer = await sharp(buffer)
-            .resize(192, 192, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-            .toFormat('png')
-            .toBuffer();
 
-        const filename = `favicon-${Date.now()}.png`;
+        // For SVG files, we need to rasterize to a high-res PNG first
+        // Sharp handles SVG but requires explicit rasterization for resizing
+        let sourceBuffer: Buffer;
 
-        // Upload to Vercel Blob
-        const blob = await put(filename, resizedBuffer, {
-            access: 'public',
-            contentType: 'image/png'
-        });
+        if (file.type === "image/svg+xml") {
+            // Rasterize SVG to high-resolution PNG (512x512) as source
+            sourceBuffer = await sharp(buffer, { density: 300 })
+                .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                .png()
+                .toBuffer();
+        } else {
+            sourceBuffer = buffer;
+        }
 
-        // Update settings
+        const timestamp = Date.now();
+
+        // Generate all required favicon sizes
+        const faviconSizes = [
+            { name: `favicon-16-${timestamp}.png`, size: 16 },
+            { name: `favicon-32-${timestamp}.png`, size: 32 },
+            { name: `favicon-192-${timestamp}.png`, size: 192 },
+            { name: `apple-touch-icon-${timestamp}.png`, size: 180 },
+        ];
+
+        const urls: { [key: string]: string } = {};
+
+        for (const { name, size } of faviconSizes) {
+            const resizedBuffer = await sharp(sourceBuffer)
+                .resize(size, size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                .png()
+                .toBuffer();
+
+            const blob = await put(name, resizedBuffer, {
+                access: 'public',
+                contentType: 'image/png'
+            });
+
+            // Map size to field name
+            if (size === 16) urls.favicon16Url = blob.url;
+            else if (size === 32) urls.favicon32Url = blob.url;
+            else if (size === 192) urls.faviconUrl = blob.url;
+            else if (size === 180) urls.faviconAppleUrl = blob.url;
+        }
+
+        // Update settings with all favicon URLs
         await saveSiteSettings({
-            faviconUrl: blob.url,
+            faviconUrl: urls.faviconUrl,
+            favicon16Url: urls.favicon16Url,
+            favicon32Url: urls.favicon32Url,
+            faviconAppleUrl: urls.faviconAppleUrl,
         });
 
         revalidatePath("/");
         revalidatePath("/admin/settings");
 
-        return { success: true, error: "", url: blob.url };
+        return { success: true, error: "", url: urls.faviconUrl };
     } catch (error: unknown) {
+        console.error("Favicon upload error:", error);
         return { success: false, error: (error as Error).message || "Failed to upload favicon" };
     }
 }

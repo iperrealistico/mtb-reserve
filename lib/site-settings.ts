@@ -5,6 +5,9 @@ export interface SiteSettings {
     serpDescription: string;
     seoKeywords: string[];
     faviconUrl?: string;
+    favicon16Url?: string;
+    favicon32Url?: string;
+    faviconAppleUrl?: string;
     socialImageUrl?: string;
     adminNotificationEmail: string;
     // Email config removed from here as per plan, now in templates
@@ -30,6 +33,9 @@ export async function getSiteSettings(): Promise<SiteSettings> {
             serpDescription: settings.serpDescription,
             seoKeywords: settings.seoKeywords,
             faviconUrl: settings.faviconUrl || undefined,
+            favicon16Url: settings.favicon16Url || undefined,
+            favicon32Url: settings.favicon32Url || undefined,
+            faviconAppleUrl: settings.faviconAppleUrl || undefined,
             socialImageUrl: settings.socialImageUrl || undefined,
             adminNotificationEmail: settings.adminNotificationEmail || DEFAULT_SETTINGS.adminNotificationEmail,
         };
@@ -47,6 +53,9 @@ export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise
             serpDescription: settings.serpDescription || DEFAULT_SETTINGS.serpDescription,
             seoKeywords: settings.seoKeywords || DEFAULT_SETTINGS.seoKeywords,
             faviconUrl: settings.faviconUrl,
+            favicon16Url: settings.favicon16Url,
+            favicon32Url: settings.favicon32Url,
+            faviconAppleUrl: settings.faviconAppleUrl,
             socialImageUrl: settings.socialImageUrl,
             adminNotificationEmail: settings.adminNotificationEmail || DEFAULT_SETTINGS.adminNotificationEmail,
         },
@@ -55,6 +64,9 @@ export async function saveSiteSettings(settings: Partial<SiteSettings>): Promise
             serpDescription: settings.serpDescription,
             seoKeywords: settings.seoKeywords,
             faviconUrl: settings.faviconUrl,
+            favicon16Url: settings.favicon16Url,
+            favicon32Url: settings.favicon32Url,
+            faviconAppleUrl: settings.faviconAppleUrl,
             socialImageUrl: settings.socialImageUrl,
             adminNotificationEmail: settings.adminNotificationEmail,
         }

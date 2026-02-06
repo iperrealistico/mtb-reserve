@@ -175,10 +175,12 @@ export default function LandingPage() {
                   {/* Input 2 Lookalike - Join Request */}
                   {/* This triggers the Modal directly */}
                   <JoinRequestModal trigger={
-                    <Button className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.2)] hover:shadow-[0_0_40px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98] text-left pl-14 pr-6 flex items-center justify-between relative font-outfit">
+                    <Button className="w-full h-16 text-xl font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.2)] hover:shadow-[0_0_40px_rgba(37,99,235,0.4)] transition-all active:scale-[0.98] relative font-outfit">
                       <Mail className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-white/80" />
-                      <span className="text-xl font-bold font-outfit">I want to join</span>
-                      <ArrowRight className="w-6 h-6" />
+                      <span className="flex items-center justify-between w-full pl-14 pr-0">
+                        <span className="text-xl font-bold font-outfit">I want to join</span>
+                        <ArrowRight className="w-6 h-6" />
+                      </span>
                     </Button>
                   } />
                 </div>

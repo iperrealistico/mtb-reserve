@@ -182,6 +182,9 @@ model SystemSettings {
   
   // Branding
   faviconUrl         String?
+  favicon16Url       String?
+  favicon32Url       String?
+  faviconAppleUrl    String?
   socialImageUrl     String?
 
   // Notifications

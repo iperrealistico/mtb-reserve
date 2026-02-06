@@ -10,27 +10,33 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://mtbreserve.com";
 
   return {
     title: settings.serpTitle || "MTB Reserve",
     description: settings.serpDescription || "MTB Booking System",
     keywords: settings.seoKeywords?.join(", "),
     icons: {
-      icon: settings.faviconUrl || "/favicon.ico",
-      apple: settings.faviconUrl || "/favicon.ico",
+      icon: [
+        { url: settings.favicon16Url || settings.faviconUrl || "/favicon.ico", sizes: "16x16", type: "image/png" },
+        { url: settings.favicon32Url || settings.faviconUrl || "/favicon.ico", sizes: "32x32", type: "image/png" },
+        { url: settings.faviconUrl || "/favicon.ico", sizes: "192x192", type: "image/png" },
+      ],
+      apple: [
+        { url: settings.faviconAppleUrl || settings.faviconUrl || "/favicon.ico", sizes: "180x180", type: "image/png" },
+      ],
+      shortcut: settings.faviconUrl || "/favicon.ico",
     },
     openGraph: {
       title: settings.serpTitle || "MTB Reserve",
       description: settings.serpDescription || "MTB Booking System",
-      images: settings.socialImageUrl ? [{ url: `${baseUrl}${settings.socialImageUrl}` }] : [],
+      images: settings.socialImageUrl ? [{ url: settings.socialImageUrl }] : [],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: settings.serpTitle || "MTB Reserve",
       description: settings.serpDescription || "MTB Booking System",
-      images: settings.socialImageUrl ? [`${baseUrl}${settings.socialImageUrl}`] : [],
+      images: settings.socialImageUrl ? [settings.socialImageUrl] : [],
     },
   };
 }
