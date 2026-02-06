@@ -92,7 +92,7 @@ export default function SiteSettingsForm({ initialSettings }: { initialSettings:
                         <div className="flex-shrink-0">
                             <p className="text-xs text-gray-500 mb-2">Current</p>
                             <img
-                                src={initialSettings.faviconUrl}
+                                src={`${initialSettings.faviconUrl}?v=${Date.now()}`}
                                 alt="Current favicon"
                                 className="w-16 h-16 border rounded"
                             />
@@ -140,7 +140,7 @@ export default function SiteSettingsForm({ initialSettings }: { initialSettings:
                         <div className="flex-shrink-0">
                             <p className="text-xs text-gray-500 mb-2">Current</p>
                             <img
-                                src={initialSettings.socialImageUrl}
+                                src={`${initialSettings.socialImageUrl}?v=${Date.now()}`}
                                 alt="Current social image"
                                 className="w-48 h-24 object-cover border rounded"
                             />

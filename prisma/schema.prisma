@@ -190,3 +190,17 @@ model SystemSettings {
   updatedAt          DateTime @updatedAt
 }
 
+
+model SignupRequest {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  organization String
+  address   String?
+  message   String?
+  status    String   @default("PENDING") // PENDING, REPLIED, ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

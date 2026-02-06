@@ -1,6 +1,7 @@
 "use server";
 
 import { sendSignupRequest } from "@/lib/email";
+import { db } from "@/lib/db";
 
 export async function submitJoinRequest(_prevState: unknown, formData: FormData) {
     const rawData = {
@@ -22,12 +23,22 @@ export async function submitJoinRequest(_prevState: unknown, formData: FormData)
     }
 
     try {
+        // 1. Save to Database
+        await (db as any).signupRequest.create({
+            data: rawData
+        });
+
+        // 2. Send Emails
         const res = await sendSignupRequest(rawData);
         if (res.error) {
-            return { success: false, error: "Failed to send request. Please try again later." };
+            // We still return success to the user because the DB save worked, 
+            // but we log the email error internally (sendSignupRequest does this).
+            console.error("Email sending failed after DB save", res.error);
         }
+
         return { success: true };
     } catch (error) {
+        console.error("Join request failed", error);
         return { success: false, error: "An unexpected error occurred." };
     }
 }
