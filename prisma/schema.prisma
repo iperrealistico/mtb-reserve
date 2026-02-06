@@ -207,3 +207,9 @@ model SignupRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model AboutPageContent {
+  id        String   @id @default("about") // Singleton
+  content   Json     // Structured content for all sections
+  updatedAt DateTime @updatedAt
+}

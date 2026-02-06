@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Settings, Activity, Mail, Terminal, HeartPulse } from "lucide-react";
+import { Building2, Settings, Activity, Mail, Terminal, HeartPulse, FileText } from "lucide-react";
 
 export default function SuperAdminNav() {
     const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function SuperAdminNav() {
     const links = [
         { href: "/admin", label: "Tenants", icon: Building2, exact: true },
         { href: "/admin/settings", label: "Settings", icon: Settings },
+        { href: "/admin/about", label: "About Page", icon: FileText },
         { href: "/admin/emails", label: "Emails", icon: Mail },
         { href: "/admin/logs", label: "Logs", icon: Terminal },
         { href: "/admin/health", label: "Health", icon: HeartPulse },

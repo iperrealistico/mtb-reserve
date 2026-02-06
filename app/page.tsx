@@ -2,7 +2,8 @@
 
 import { useState, useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Bike, Store, ArrowRight, CheckCircle2, ChevronRight, Mail, Loader2, ArrowLeft, LogIn } from "lucide-react";
+import Link from "next/link";
+import { Search, Bike, Store, ArrowRight, CheckCircle2, ChevronRight, Mail, Loader2, ArrowLeft, LogIn, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -228,8 +229,17 @@ export default function LandingPage() {
           </div>
         </section>
 
-      </div >
-    </div >
+      </div>
+
+      {/* Floating Info Badge */}
+      <Link
+        href="/about"
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-neutral-200 px-5 py-2.5 rounded-full text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md"
+      >
+        <Info className="w-4 h-4" />
+        What is MTB Reserve?
+      </Link>
+    </div>
   );
 }
 
