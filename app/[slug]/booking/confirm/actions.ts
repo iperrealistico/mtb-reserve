@@ -31,7 +31,11 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
 
     const booking = await db.booking.findUnique({
         where: { confirmationToken: token },
-        include: { tenant: true, bikeType: true }
+        include: {
+            tenant: true,
+            bikeType: true,
+            items: { include: { bikeType: true } }
+        }
     });
 
     if (!booking) return { success: false, error: "Booking not found or expired." };
@@ -46,37 +50,62 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
     // Generate booking code
     const bookingCode = await generateUniqueBookingCode();
 
+    // Determine items to check
+    const bookingItems = booking.items && booking.items.length > 0
+        ? booking.items
+        : (booking.bikeType ? [{ bikeTypeId: booking.bikeTypeId!, quantity: booking.quantity, bikeType: booking.bikeType }] : []);
+
+    if (bookingItems.length === 0) {
+        return { success: false, error: "Invalid booking data: no bikes found." };
+    }
+
     // ATOMIC TRANSACTION to re-verify and confirm
     try {
         await db.$transaction(async (tx) => {
-            // 1. Re-check availability
-            const aggregateResult = await tx.booking.aggregate({
-                _sum: { quantity: true },
-                where: {
-                    tenantSlug: booking.tenantSlug,
-                    bikeTypeId: booking.bikeTypeId,
-                    id: { not: booking.id },
-                    AND: [
-                        { startTime: { lt: booking.endTime } },
-                        { endTime: { gt: booking.startTime } },
-                        {
-                            OR: [
-                                { status: "CONFIRMED" },
+            // 1. Re-check availability for EACH item
+            for (const item of bookingItems) {
+                // If checking legacy or new items, we need to sum up usage
+                // Note: 'item' here is either a BookingItem or a constructed object resembling one
+
+                const aggregateResult = await tx.bookingItem.aggregate({
+                    _sum: { quantity: true },
+                    where: {
+                        bikeTypeId: item.bikeTypeId,
+                        booking: {
+                            tenantSlug: booking.tenantSlug,
+                            id: { not: booking.id }, // Exclude current booking
+                            AND: [
+                                { startTime: { lt: booking.endTime } },
+                                { endTime: { gt: booking.startTime } },
                                 {
-                                    status: "PENDING_CONFIRM",
-                                    expiresAt: { gt: now },
+                                    OR: [
+                                        { status: "CONFIRMED" },
+                                        {
+                                            status: "PENDING_CONFIRM",
+                                            expiresAt: { gt: now },
+                                        },
+                                    ],
                                 },
                             ],
-                        },
-                    ],
-                },
-            });
+                        }
+                    },
+                });
 
-            const othersBookedCount = aggregateResult._sum.quantity || 0;
-            const available = booking.bikeType.totalStock - booking.bikeType.brokenCount - othersBookedCount;
+                const bookedCount = aggregateResult._sum.quantity || 0;
+                // If item has bikeType loaded (from include or construction), use it
+                // Otherwise fetch it (should typically be loaded)
+                let bikeType = item.bikeType;
+                if (!bikeType) {
+                    bikeType = await tx.bikeType.findUnique({ where: { id: item.bikeTypeId } });
+                }
 
-            if (available < booking.quantity) {
-                throw new Error("This slot is no longer available. Your pending booking might have expired and been taken by someone else.");
+                if (!bikeType) throw new Error("Invalid bike type in booking");
+
+                const available = bikeType.totalStock - bikeType.brokenCount - bookedCount;
+
+                if (available < item.quantity) {
+                    throw new Error(`Bike '${bikeType.name}' is no longer available. Your pending booking might have expired.`);
+                }
             }
 
             if (isExpired) {
@@ -118,6 +147,16 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
     const startTimeStr = format(booking.startTime, "h:mm a");
     const endTimeStr = format(booking.endTime, "h:mm a");
 
+    // Construct Item list string for Emails
+    const itemsListHtml = bookingItems.map(i =>
+        `<tr>
+            <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">${i.bikeType?.name || 'Bike'}</td>
+            <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">x${i.quantity}</td>
+        </tr>`
+    ).join('');
+
+    const itemsSummaryString = bookingItems.map(i => `${i.quantity}x ${i.bikeType?.name}`).join(', ');
+
     // Send enhanced "Booking Confirmed" email to User
     await sendEmail({
         to: booking.customerEmail,
@@ -142,14 +181,9 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Time</td>
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${startTimeStr} - ${endTimeStr}</td>
                     </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Bike</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.bikeType.name}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Quantity</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: 500;">${booking.quantity}</td>
-                    </tr>
+                    
+                    ${itemsListHtml}
+                    
                     ${(booking.totalPrice || 0) > 0 ? `
                     <tr>
                         <td style="padding: 12px 0; border-bottom: 1px solid #eee; color: #666;">Total Price</td>
@@ -197,7 +231,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                 <p><strong>Email:</strong> ${booking.customerEmail}</p>
                 <p><strong>Date:</strong> ${dateStr}</p>
                 <p><strong>Time:</strong> ${startTimeStr} - ${endTimeStr}</p>
-                <p><strong>Bike:</strong> ${booking.bikeType.name} x ${booking.quantity}</p>
+                <p><strong>Equipment:</strong> ${itemsSummaryString}</p>
             </div>
         `
     });
