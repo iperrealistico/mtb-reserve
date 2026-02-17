@@ -9,7 +9,13 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
 
     const booking = await db.booking.findUnique({
         where: { confirmationToken: token },
-        include: { bikeType: true, tenant: true }
+        include: {
+            bikeType: true,
+            tenant: true,
+            items: {
+                include: { bikeType: true }
+            }
+        }
     });
 
     if (!booking) {
@@ -39,8 +45,23 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
                     </p>
                     <div className="bg-gray-50 p-4 rounded text-left text-sm space-y-2">
                         <p><strong>Date:</strong> {format(booking.startTime, "PPP")}</p>
-                        <p><strong>Bike:</strong> {booking.bikeType.name}</p>
-                        <p><strong>Quantity:</strong> {booking.quantity}</p>
+                        {booking.items && booking.items.length > 0 ? (
+                            <div className="mt-2">
+                                <p className="font-bold mb-1">Equipment:</p>
+                                <ul className="list-disc list-inside text-gray-700 ml-1">
+                                    {booking.items.map((item: any) => (
+                                        <li key={item.id}>
+                                            {item.quantity}x {item.bikeType.name}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <>
+                                <p><strong>Bike:</strong> {booking.bikeType?.name || "N/A"}</p>
+                                <p><strong>Quantity:</strong> {booking.quantity}</p>
+                            </>
+                        )}
                     </div>
                     <p className="mt-6 text-sm text-gray-500">
                         Check your email for details.
@@ -68,14 +89,30 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
                             <span className="text-gray-600">Time</span>
                             <span className="font-medium">{format(booking.startTime, "p")} - {format(booking.endTime, "p")}</span>
                         </div>
-                        <div className="flex justify-between border-b pb-2">
-                            <span className="text-gray-600">Bike</span>
-                            <span className="font-medium">{booking.bikeType.name}</span>
-                        </div>
-                        <div className="flex justify-between border-b pb-2">
-                            <span className="text-gray-600">Quantity</span>
-                            <span className="font-medium">{booking.quantity}</span>
-                        </div>
+                        {booking.items && booking.items.length > 0 ? (
+                            <div className="border-b pb-2">
+                                <span className="text-gray-600 block mb-2">Equipment</span>
+                                <ul className="space-y-1">
+                                    {booking.items.map((item: any) => (
+                                        <li key={item.id} className="flex justify-between text-sm">
+                                            <span className="font-medium text-gray-900">{item.bikeType.name}</span>
+                                            <span className="text-gray-500">x{item.quantity}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-gray-600">Bike</span>
+                                    <span className="font-medium">{booking.bikeType?.name || "N/A"}</span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-gray-600">Quantity</span>
+                                    <span className="font-medium">{booking.quantity}</span>
+                                </div>
+                            </>
+                        )}
                         <div className="flex justify-between border-b pb-2">
                             <span className="text-gray-600">Guest</span>
                             <span className="font-medium">{booking.customerName}</span>
