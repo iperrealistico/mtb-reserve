@@ -84,6 +84,22 @@ export const TEMPLATES: TemplateConfig[] = [
         <p><strong>Phone:</strong> {{phone}}</p>
         <p><strong>Address:</strong> {{address}}</p>
         <p><strong>Message:</strong> {{message}}</p>`
+    },
+    {
+        id: "booking_cancelled",
+        label: "Booking Cancelled",
+        description: "Sent to the user when their booking is cancelled by an admin.",
+        placeholders: ["{{customerName}}", "{{bookingCode}}", "{{date}}", "{{bike}}", "{{tenantName}}"],
+        defaultSubject: "Booking Cancelled - {{bookingCode}}",
+        defaultHtml: `<p>Hi {{customerName}},</p><p>We regret to inform you that your booking ({{bookingCode}}) for <strong>{{date}}</strong> has been cancelled.</p><p>If you have any questions, please contact us.</p>`
+    },
+    {
+        id: "booking_no_show",
+        label: "Booking No-Show",
+        description: "Sent to the user when they are marked as a no-show.",
+        placeholders: ["{{customerName}}", "{{bookingCode}}", "{{date}}", "{{tenantName}}"],
+        defaultSubject: "Missed Booking - {{bookingCode}}",
+        defaultHtml: `<p>Hi {{customerName}},</p><p>We noticed you missed your booking ({{bookingCode}}) on <strong>{{date}}</strong>.</p><p>Please let us know if you'd like to reschedule.</p>`
     }
 ];
 

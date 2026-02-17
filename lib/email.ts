@@ -370,3 +370,74 @@ export async function sendEmail({ to, subject, html, category = 'generic', entit
         return { error };
     }
 }
+
+export async function sendBookingStatusChangeEmail(booking: any, status: string) {
+    const statusMap: Record<string, string> = {
+        "CANCELLED": "booking_cancelled",
+        "NO_SHOW": "booking_no_show"
+    };
+
+    const templateId = statusMap[status];
+    if (!templateId) {
+        console.warn(`No email template found for status: ${status}`);
+        return { error: "No template for status" };
+    }
+
+    const { subject, html, from } = await getTemplateContent(templateId, {
+        customerName: booking.customerName,
+        bookingCode: booking.bookingCode || "N/A",
+        date: new Date(booking.startTime).toLocaleDateString(),
+        bike: booking.bikeType?.name || "Bikes",
+        tenantName: booking.tenantSlug || "MTB Reserve"
+    }, {
+        subject: `Booking Update: ${status}`,
+        html: `<p>Your booking status has been updated to: <strong>${status}</strong></p>`
+    });
+
+    if (SHOULD_LOG) {
+        console.log(`[MOCK EMAIL] Status Update (${status}) To: ${booking.customerEmail} | From: ${from} | Subject: ${subject}`);
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT_MOCK",
+            message: `Mock status update email`,
+            metadata: { to: booking.customerEmail, subject, type: templateId, providerId: "mock-id" }
+        });
+        return { success: true };
+    }
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from,
+            to: booking.customerEmail,
+            subject,
+            html,
+            headers: { 'X-Entity-Ref-ID': booking.id },
+            tags: [
+                { name: 'category', value: templateId },
+                { name: 'tenant', value: booking.tenantSlug || 'unknown' }
+            ]
+        });
+
+        if (error) throw error;
+
+        await logEvent({
+            level: "INFO",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_SENT",
+            message: `Booking ${status} email sent`,
+            metadata: { to: booking.customerEmail, subject, providerId: data?.id, type: templateId }
+        });
+        return { success: true };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        await logEvent({
+            level: "ERROR",
+            actorType: "SYSTEM",
+            eventType: "EMAIL_FAILED",
+            message: `Failed to send ${status} email`,
+            metadata: { to: booking.customerEmail, subject, type: templateId, error: message }
+        });
+        return { error };
+    }
+}
