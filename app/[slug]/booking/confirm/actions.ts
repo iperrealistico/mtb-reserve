@@ -94,7 +94,7 @@ export async function confirmBookingAction(_prevState: unknown, formData: FormDa
                 const bookedCount = aggregateResult._sum.quantity || 0;
                 // If item has bikeType loaded (from include or construction), use it
                 // Otherwise fetch it (should typically be loaded)
-                let bikeType = item.bikeType;
+                let bikeType: { id: string, name: string, totalStock: number, brokenCount: number } | null = item.bikeType;
                 if (!bikeType) {
                     bikeType = await tx.bikeType.findUnique({ where: { id: item.bikeTypeId } });
                 }
