@@ -28,25 +28,37 @@ export default async function SettingsPage({
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-8 overflow-x-auto no-scrollbar">
-                <a
-                    href={`/${slug}/admin/settings?tab=general`}
-                    className={`pb-4 px-6 text-sm font-medium transition-colors relative whitespace-nowrap ${activeTab === "general"
-                        ? "text-indigo-600 border-b-2 border-indigo-600"
-                        : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
-                >
-                    General
-                </a>
-                <a
-                    href={`/${slug}/admin/settings?tab=security`}
-                    className={`pb-4 px-6 text-sm font-medium transition-colors relative whitespace-nowrap ${activeTab === "security"
-                        ? "text-indigo-600 border-b-2 border-indigo-600"
-                        : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                        }`}
-                >
-                    Security
-                </a>
+            <div className="flex justify-between items-center mb-8">
+                <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
+                    <a
+                        href={`/${slug}/admin/settings?tab=general`}
+                        className={`pb-4 px-6 text-sm font-medium transition-colors relative whitespace-nowrap ${activeTab === "general"
+                            ? "text-indigo-600 border-b-2 border-indigo-600"
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                    >
+                        General
+                    </a>
+                    <a
+                        href={`/${slug}/admin/settings?tab=security`}
+                        className={`pb-4 px-6 text-sm font-medium transition-colors relative whitespace-nowrap ${activeTab === "security"
+                            ? "text-indigo-600 border-b-2 border-indigo-600"
+                            : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                    >
+                        Security
+                    </a>
+                </div>
+
+                <form action={async () => {
+                    "use server";
+                    const { logoutAction } = await import("../../login/actions");
+                    await logoutAction(slug);
+                }}>
+                    <button type="submit" className="text-sm text-red-600 hover:text-red-800 font-medium px-4">
+                        Sign Out
+                    </button>
+                </form>
             </div>
 
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -78,3 +78,9 @@ export async function loginAction(prevState: any, formData: FormData) {
 
     redirect(`/${slug}/admin/dashboard`);
 }
+
+export async function logoutAction(slug: string) {
+    const session = await getSession();
+    session.destroy();
+    redirect(`/${slug}/admin/login`);
+}

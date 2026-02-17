@@ -41,10 +41,12 @@ model BikeType {
   totalStock  Int      @default(0)
   brokenCount Int      @default(0)
   notes       String?
+  description String?
   costPerHour Float    @default(0)
 
   tenant      Tenant   @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
   bookings    Booking[]
+  bookingItems BookingItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -63,7 +65,7 @@ enum BookingStatus {
 model Booking {
   id                String        @id @default(cuid())
   tenantSlug        String
-  bikeTypeId        String
+  bikeTypeId        String?
   
   status            BookingStatus @default(PENDING_CONFIRM)
   
@@ -82,6 +84,8 @@ model Booking {
   totalPrice        Float         @default(0)
   paidAmount        Float         @default(0)
   
+  items             BookingItem[]
+
   // Confirmation logic
   confirmationToken String?       @unique
   expiresAt         DateTime?     // When pending confirmation expires
@@ -90,7 +94,7 @@ model Booking {
   tosAcceptedAt     DateTime?
 
   tenant            Tenant        @relation(fields: [tenantSlug], references: [slug], onDelete: Cascade)
-  bikeType          BikeType      @relation(fields: [bikeTypeId], references: [id], onDelete: Cascade)
+  bikeType          BikeType?     @relation(fields: [bikeTypeId], references: [id], onDelete: Cascade)
 
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -99,6 +103,20 @@ model Booking {
   @@index([status])
   @@index([confirmationToken])
   @@index([bookingCode])
+}
+
+model BookingItem {
+  id        String   @id @default(cuid())
+  bookingId String
+  bikeTypeId String
+  quantity  Int
+  price     Float    @default(0)
+
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bikeType  BikeType @relation(fields: [bikeTypeId], references: [id])
+  
+  @@index([bookingId])
+  @@index([bikeTypeId])
 }
 
 model SuperAdmin {

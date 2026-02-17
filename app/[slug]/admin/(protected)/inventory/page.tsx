@@ -114,6 +114,9 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                                             <Input name="costPerHour" type="number" defaultValue={bike.costPerHour} step="0.01" className="h-8 w-16" min={0} />
                                             <span className="text-xs text-gray-400">€/hr</span>
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <Input name="description" placeholder="Description" defaultValue={bike.description || ""} className="h-8 w-full" />
+                                        </div>
                                         <Button size="sm" type="submit" variant="ghost" className="h-7 text-xs w-full mt-1">
                                             <Save className="w-3 h-3 mr-1" /> Update
                                         </Button>
@@ -147,6 +150,10 @@ export default async function InventoryPage({ params }: { params: Promise<{ slug
                         <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700">Name</label>
                             <Input name="name" placeholder="e.g. E-Bike Pro" required />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700">Description</label>
+                            <Input name="description" placeholder="Short description" />
                         </div>
                         <div className="w-24">
                             <label className="block text-sm font-medium text-gray-700">Stock</label>

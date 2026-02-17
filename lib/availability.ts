@@ -80,26 +80,29 @@ export async function getBikeAvailability(
     const availability: AvailabilityResult = {};
 
     for (const bike of bikeTypes) {
-        const result = await db.booking.aggregate({
+        // Count confirmed/pending bookings via BookingItem
+        const result = await db.bookingItem.aggregate({
             _sum: {
                 quantity: true,
             },
             where: {
-                tenantSlug,
                 bikeTypeId: bike.id,
-                AND: [
-                    { startTime: { lt: reqEnd } },
-                    { endTime: { gt: reqStart } },
-                    {
-                        OR: [
-                            { status: "CONFIRMED" },
-                            {
-                                status: "PENDING_CONFIRM",
-                                expiresAt: { gt: new Date() },
-                            },
-                        ],
-                    },
-                ],
+                booking: {
+                    tenantSlug,
+                    AND: [
+                        { startTime: { lt: reqEnd } },
+                        { endTime: { gt: reqStart } },
+                        {
+                            OR: [
+                                { status: "CONFIRMED" },
+                                {
+                                    status: "PENDING_CONFIRM",
+                                    expiresAt: { gt: new Date() },
+                                },
+                            ],
+                        },
+                    ],
+                },
             },
         });
 

@@ -30,15 +30,30 @@ const detailsSchema = z.object({
     customerName: z.string().min(2, "Name is required"),
     customerEmail: z.string().email("Invalid email"),
     customerPhone: z.string().min(6, "Phone is required"),
-    quantity: z.number().min(1).max(5),
 });
 
 type FormValues = z.infer<typeof detailsSchema>;
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes: BikeType[] } }) {
     // State
     const [step, setStep] = useState<Step>("date");
     const [date, setDate] = useState<Date | undefined>(undefined);
+
+    // Dialog State
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+    const [alertMessage, setAlertMessage] = useState({ title: "", desc: "" });
 
     // Data State
     const [loadingSlots, setLoadingSlots] = useState(false);
@@ -47,26 +62,43 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
 
     // Selection State
     const [selectedSlotId, setSelectedSlotId] = useState<string>("");
-    const [selectedBikeTypeId, setSelectedBikeTypeId] = useState<string>("");
+
+    // Multi-Selection State: bikeId -> quantity
+    const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
+
     const [isSubmitting, setIsSubmitting] = useState(false);
-    // Removed captchaToken state
+
+    // Using totalSelectedQuantity for checks
+    const totalSelectedQuantity = Object.values(selectedItems).reduce((a, b) => a + b, 0);
+
+    // Helper: Safe Action Wrapper
+    const safeAction = (action: () => void, title: string, desc: string) => {
+        if (totalSelectedQuantity > 0 || (step === "bike" && selectedSlotId)) {
+            setPendingAction(() => action);
+            setAlertMessage({ title, desc });
+            setAlertOpen(true);
+        } else {
+            action();
+        }
+    };
+
+    const confirmAction = () => {
+        if (pendingAction) pendingAction();
+        setAlertOpen(false);
+        setPendingAction(null);
+    };
 
     // Form Hook
     const { register, handleSubmit, formState: { errors }, watch } = useForm<FormValues>({
-        resolver: zodResolver(detailsSchema),
-        defaultValues: {
-            quantity: 1,
-        }
+        resolver: zodResolver(detailsSchema)
     });
-
-    const watchQuantity = watch("quantity");
 
     // Fetch Availability Effect
     useEffect(() => {
         if (date) {
             setLoadingSlots(true);
             setSelectedSlotId(""); // Reset slot when date changes
-            setSelectedBikeTypeId(""); // Reset bike
+            setSelectedItems({}); // Reset bikes
             setStep("slot"); // Auto-advance
 
             getAvailabilityAction(tenant.slug, date)
@@ -78,37 +110,65 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         }
     }, [date, tenant.slug]);
 
-    // Removed recaptchaRef
-
     // Handlers
     const handleSlotSelect = (slotId: string) => {
-        setSelectedSlotId(slotId);
-        setStep("bike");
+        const select = () => {
+            setSelectedSlotId(slotId);
+            setSelectedItems({}); // Clear selection on slot change
+            setStep("bike");
+        };
+
+        if (totalSelectedQuantity > 0 && selectedSlotId !== slotId) {
+            safeAction(select, "Change Time Slot?", "Changing the time slot will clear your selected bikes.");
+        } else {
+            select();
+        }
     };
 
-    const handleBikeSelect = (bikeId: string) => {
-        setSelectedBikeTypeId(bikeId);
-        setStep("details");
+    const handleChangeDate = () => {
+        safeAction(
+            () => setStep("date"),
+            "Change Date?",
+            "Going back to date selection will reset your current progress."
+        );
     };
 
-    // Removed onCaptchaChange, pendingDataRef, useEffect for token
+    const handleQuantityChange = (bikeId: string, delta: number) => {
+        const currentQty = selectedItems[bikeId] || 0;
+        const maxQty = availability[selectedSlotId]?.[bikeId] || 0;
+
+        const newQty = Math.max(0, Math.min(maxQty, currentQty + delta));
+
+        setSelectedItems(prev => {
+            const next = { ...prev, [bikeId]: newQty };
+            if (newQty === 0) delete next[bikeId];
+            return next;
+        });
+    };
 
     const onSubmit = async (data: FormValues) => {
-        if (!date || !selectedSlotId || !selectedBikeTypeId) return;
+        if (!date || !selectedSlotId || Object.keys(selectedItems).length === 0) return;
 
         setIsSubmitting(true);
+
+        // Construct Items Array
+        const items = Object.entries(selectedItems).map(([bikeId, quantity]) => ({
+            bikeTypeId: bikeId,
+            quantity
+        }));
+
         const formData = new FormData();
         formData.append("slug", tenant.slug);
         formData.append("date", date!.toISOString());
         formData.append("slotId", selectedSlotId);
-        formData.append("bikeTypeId", selectedBikeTypeId);
-        formData.append("quantity", data.quantity.toString());
+        formData.append("items", JSON.stringify(items));
+
+        // Contact Info
         formData.append("customerName", data.customerName);
         formData.append("customerEmail", data.customerEmail);
         formData.append("customerPhone", data.customerPhone);
-        // Removed recaptchaToken append
 
-        console.log("[BookingWizard] Submitting booking request...", { slotId: selectedSlotId, bike: selectedBikeTypeId });
+        console.log("[BookingWizard] Submitting booking request...", { slotId: selectedSlotId, items });
 
         try {
             // 20 Second Timeout Guard
@@ -119,7 +179,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
             const result = await Promise.race([
                 submitBookingAction(null, formData),
                 timeoutPromise
-            ]) as any; // Type casting for the race result
+            ]) as any;
 
             console.log("[BookingWizard] Submission result:", result);
 
@@ -143,25 +203,34 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         const slot = slots.find(s => s.id === id);
         return (slot?.label && slot.label.trim() !== "") ? slot.label : "Standard Slot";
     };
-    const formatBikeName = (id: string) => tenant.bikeTypes.find(b => b.id === id)?.name;
+
+    const getSelectedItemsTags = () => {
+        return Object.entries(selectedItems).map(([id, qty]) => {
+            const bike = tenant.bikeTypes.find(b => b.id === id);
+            return { name: bike?.name || "Unknown Bike", quantity: qty };
+        });
+    };
 
     const calculatePrice = () => {
-        if (!selectedSlotId || !selectedBikeTypeId) return 0;
+        if (!selectedSlotId || Object.keys(selectedItems).length === 0) return 0;
         const slot = slots.find(s => s.id === selectedSlotId);
-        const bike = tenant.bikeTypes.find(b => b.id === selectedBikeTypeId);
-        if (!slot || !bike) return 0;
+        if (!slot) return 0;
 
-        // Calculate duration hours
-        // Format of slot.start/end is "HH:MM"
-        // Since we are in Wizard, we assume date is consistent or we just use relative hours
         const getHours = (time: string) => {
             const [h, m] = time.split(':').map(Number);
             return h + (m / 60);
         };
         const duration = getHours(slot.end) - getHours(slot.start);
-        const cost = bike.costPerHour || 0;
 
-        return duration * cost * watchQuantity;
+        let total = 0;
+        Object.entries(selectedItems).forEach(([bikeId, qty]) => {
+            const bike = tenant.bikeTypes.find(b => b.id === bikeId);
+            if (bike) {
+                total += (bike.costPerHour || 0) * duration * qty;
+            }
+        });
+
+        return total;
     };
 
     const stepsList = [
@@ -234,7 +303,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-2xl font-heading font-bold">Choose a time</h2>
-                                        <Button variant="ghost" onClick={() => setStep("date")}>Change Date</Button>
+                                        <Button variant="ghost" onClick={handleChangeDate}>Change Date</Button>
                                     </div>
 
                                     {loadingSlots ? (
@@ -242,8 +311,6 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {slots.map(slot => {
-                                                // Calculate simple aggregate availability for label
-                                                // logic: sum all bikes for this slot
                                                 const slotAvail = availability[slot.id] || {};
                                                 const totalAvail = Object.values(slotAvail).reduce((a: any, b: any) => a + b, 0) as number;
                                                 const isSoldOut = totalAvail <= 0;
@@ -281,51 +348,73 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                 </div>
                             )}
 
-                            {/* Step 3: Bike */}
+                            {/* Step 3: Bike (Multi-Select) */}
                             {step === "bike" && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-2xl font-heading font-bold">Pick your bike</h2>
+                                        <h2 className="text-2xl font-heading font-bold">Pick your bikes</h2>
                                         <Button variant="ghost" onClick={() => setStep("slot")}>Back</Button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-4">
                                         {tenant.bikeTypes.map(bike => {
                                             const stock = availability[selectedSlotId]?.[bike.id] || 0;
                                             const isSoldOut = stock <= 0;
+                                            const quantity = selectedItems[bike.id] || 0;
 
                                             return (
-                                                <button
+                                                <div
                                                     key={bike.id}
-                                                    onClick={() => !isSoldOut && handleBikeSelect(bike.id)}
-                                                    disabled={isSoldOut}
                                                     className={`
-                                            relative flex flex-col items-start p-6 rounded-2xl border-2 transition-all text-left
-                                            ${isSoldOut
-                                                            ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
-                                                            : 'border-gray-200 bg-white hover:border-primary/50 hover:shadow-md cursor-pointer'
-                                                        }
+                                            flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl border-2 transition-all
+                                            ${isSoldOut ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 bg-white'}
                                         `}
                                                 >
-                                                    <div className="flex justify-between w-full items-start mb-2">
-                                                        <span className="text-lg font-bold text-gray-900">{bike.name}</span>
+                                                    <div className="flex flex-col mb-4 sm:mb-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg font-bold text-gray-900">{bike.name}</span>
+                                                            {isSoldOut ? (
+                                                                <Badge variant="secondary" className="text-xs">Sold Out</Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className={`text-xs ${stock < 3 ? "text-orange-600 border-orange-200 bg-orange-50" : "text-gray-600"}`}>
+                                                                    {stock} left
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 line-clamp-2 mt-1 max-w-sm">{bike.description || "High performance MTB suitable for all trails."}</p>
+                                                        {(bike.costPerHour || 0) > 0 && <span className="text-sm font-medium text-primary mt-1">€{bike.costPerHour?.toFixed(2)}/hr</span>}
                                                     </div>
 
-                                                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">High performance MTB suitable for all trails.</p>
-
-                                                    {isSoldOut ? (
-                                                        <Badge variant="secondary">Sold Out</Badge>
-                                                    ) : (
-                                                        <div className="flex gap-2">
-                                                            <Badge variant="outline" className={`${stock < 3 ? "text-orange-600 border-orange-200 bg-orange-50" : "text-gray-600"}`}>
-                                                                {stock} available
-                                                            </Badge>
-                                                            {(bike.costPerHour || 0) > 0 && <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">€{bike.costPerHour?.toFixed(2)}/hr</Badge>}
-                                                        </div>
-                                                    )}
-                                                </button>
+                                                    <div className="flex items-center gap-3">
+                                                        <Button
+                                                            variant="outline" size="icon" className="h-8 w-8 rounded-full"
+                                                            onClick={() => handleQuantityChange(bike.id, -1)}
+                                                            disabled={quantity === 0 || isSoldOut}
+                                                        >
+                                                            -
+                                                        </Button>
+                                                        <span className="w-6 text-center font-bold text-lg">{quantity}</span>
+                                                        <Button
+                                                            variant="outline" size="icon" className="h-8 w-8 rounded-full"
+                                                            onClick={() => handleQuantityChange(bike.id, 1)}
+                                                            disabled={quantity >= stock || isSoldOut}
+                                                        >
+                                                            +
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             );
                                         })}
+                                    </div>
+
+                                    <div className="pt-4 flex justify-end">
+                                        <Button
+                                            size="lg"
+                                            disabled={totalSelectedQuantity === 0}
+                                            onClick={() => setStep("details")}
+                                        >
+                                            Next Step
+                                        </Button>
                                     </div>
                                 </div>
                             )}
@@ -356,31 +445,12 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                     <Input id="customerPhone" type="tel" placeholder="+39 333 ..." {...register("customerPhone")} />
                                                     {errors.customerPhone && <p className="text-sm text-red-500">{errors.customerPhone.message}</p>}
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="quantity">Quantity</Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <Input
-                                                            id="quantity"
-                                                            type="number"
-                                                            min={1}
-                                                            max={availability[selectedSlotId]?.[selectedBikeTypeId] || 1}
-                                                            {...register("quantity", { valueAsNumber: true })}
-                                                            className="w-24"
-                                                        />
-                                                        <span className="text-sm text-gray-500">
-                                                            (Max {availability[selectedSlotId]?.[selectedBikeTypeId] || 0})
-                                                        </span>
-                                                    </div>
-                                                    {errors.quantity && <p className="text-sm text-red-500">{errors.quantity.message}</p>}
-                                                </div>
                                             </div>
 
                                             <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600">
                                                 By clicking "Request Booking", you agree to our terms of service.
                                                 Payment is not required at this stage.
                                             </div>
-
-                                            {/* Released reCAPTCHA component */}
 
                                             <Button
                                                 type="submit"
@@ -389,7 +459,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                                                 disabled={isSubmitting}
                                                 isLoading={isSubmitting}
                                             >
-                                                Request Booking
+                                                Request Booking ({totalSelectedQuantity} items)
                                             </Button>
                                         </form>
                                     </Card>
@@ -405,8 +475,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                         <SummaryCard
                             date={date}
                             slotLabel={formatSlotLabel(selectedSlotId)}
-                            bikeName={formatBikeName(selectedBikeTypeId)}
-                            quantity={watchQuantity}
+                            items={getSelectedItemsTags()}
                             loading={loadingSlots}
                             totalPrice={calculatePrice()}
                         />
@@ -414,6 +483,22 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
                 </div>
 
             </div>
+
+            {/* Alert Dialog */}
+            <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertMessage.title}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {alertMessage.desc}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setAlertOpen(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmAction}>Confirm</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

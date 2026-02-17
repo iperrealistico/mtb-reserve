@@ -4,13 +4,12 @@ import { format } from "date-fns";
 interface SummaryCardProps {
     date?: Date;
     slotLabel?: string;
-    bikeName?: string;
-    quantity?: number;
+    items?: { name: string; quantity: number; price?: number }[];
     loading?: boolean;
     totalPrice?: number;
 }
 
-export function SummaryCard({ date, slotLabel, bikeName, quantity, loading, totalPrice }: SummaryCardProps) {
+export function SummaryCard({ date, slotLabel, items, loading, totalPrice }: SummaryCardProps) {
     return (
         <Card className="h-fit sticky top-4 shadow-[0_6px_16px_rgba(0,0,0,0.08)] border-none rounded-2xl">
             <CardHeader className="pb-4">
@@ -36,17 +35,19 @@ export function SummaryCard({ date, slotLabel, bikeName, quantity, loading, tota
                 <div className="h-px bg-gray-100 my-2" />
 
                 {/* Bike */}
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col gap-2">
                     <span className="text-sm text-gray-500">Bikes</span>
-                    <span className="text-sm font-medium text-right flex flex-col items-end">
-                        {bikeName ? (
-                            <>
-                                <span>{quantity}x {bikeName}</span>
-                            </>
+                    <div className="flex flex-col items-end gap-1">
+                        {items && items.length > 0 ? (
+                            items.map((item, idx) => (
+                                <span key={idx} className="text-sm font-medium text-right">
+                                    {item.quantity}x {item.name}
+                                </span>
+                            ))
                         ) : (
-                            <span className="text-gray-300">--</span>
+                            <span className="text-gray-300 text-sm">--</span>
                         )}
-                    </span>
+                    </div>
                 </div>
 
                 <div className="h-px bg-gray-100 my-2" />
@@ -57,7 +58,7 @@ export function SummaryCard({ date, slotLabel, bikeName, quantity, loading, tota
                     <span className="font-bold text-lg text-primary">
                         {totalPrice !== undefined && totalPrice > 0
                             ? `€${totalPrice.toFixed(2)}`
-                            : date && slotLabel && bikeName ? "Free" : "--"}
+                            : date && slotLabel && items && items.length > 0 ? "Free" : "--"}
                     </span>
                 </div>
 

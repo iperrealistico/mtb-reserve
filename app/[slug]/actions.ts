@@ -72,8 +72,9 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
         slug: formData.get("slug"),
         date: new Date(formData.get("date") as string),
         slotId: formData.get("slotId"),
-        bikeTypeId: formData.get("bikeTypeId"),
-        quantity: Number(formData.get("quantity")),
+        bikeTypeId: formData.get("bikeTypeId") || undefined, // Optional
+        quantity: formData.get("quantity") ? Number(formData.get("quantity")) : undefined, // Optional
+        items: formData.get("items") ? JSON.parse(formData.get("items") as string) : undefined,
         customerName: formData.get("customerName"),
         customerEmail: formData.get("customerEmail"),
         customerPhone: formData.get("customerPhone"),
@@ -98,60 +99,95 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
     const startTime = createZonedDate(data.date, slot.start, timezone);
     const endTime = createZonedDate(data.date, slot.end, timezone);
 
+    // Normalize Items
+    const bookingItems = data.items && data.items.length > 0
+        ? data.items
+        : (data.bikeTypeId && data.quantity ? [{ bikeTypeId: data.bikeTypeId, quantity: data.quantity }] : []);
+
+    if (bookingItems.length === 0) return { error: "No items selected" };
+
+    // Common Data
+    const primaryItem = bookingItems[0];
+
     // ATOMIC TRANSACTION
     try {
         const booking = await db.$transaction(async (tx) => {
-            // 1. Re-Check Availability INSIDE Transaction
-            // Calculate overlapping bookings count
-            const bikeType = await tx.bikeType.findUnique({ where: { id: data.bikeTypeId } });
-            if (!bikeType) throw new Error("Invalid bike type");
+            let totalPrice = 0;
+            const createdItemsData = [];
 
-            const aggregateResult = await tx.booking.aggregate({
-                _sum: { quantity: true },
-                where: {
-                    tenantSlug: data.slug,
-                    bikeTypeId: data.bikeTypeId,
-                    AND: [
-                        { startTime: { lt: endTime } },
-                        { endTime: { gt: startTime } },
-                        {
-                            OR: [
-                                { status: "CONFIRMED" },
+            // 1. Check Availability for EACH item
+            for (const item of bookingItems) {
+                const bikeType = await tx.bikeType.findUnique({ where: { id: item.bikeTypeId } });
+                if (!bikeType) throw new Error(`Invalid bike type: ${item.bikeTypeId}`);
+
+                // Calculate overlapping bookings count using BookingItem
+                const aggregateResult = await tx.bookingItem.aggregate({
+                    _sum: { quantity: true },
+                    where: {
+                        bikeTypeId: item.bikeTypeId,
+                        booking: {
+                            tenantSlug: data.slug,
+                            AND: [
+                                { startTime: { lt: endTime } },
+                                { endTime: { gt: startTime } },
                                 {
-                                    status: "PENDING_CONFIRM",
-                                    expiresAt: { gt: new Date() },
+                                    OR: [
+                                        { status: "CONFIRMED" },
+                                        {
+                                            status: "PENDING_CONFIRM",
+                                            expiresAt: { gt: new Date() },
+                                        },
+                                    ],
                                 },
                             ],
-                        },
-                    ],
-                },
-            });
+                        }
+                    },
+                });
 
-            const bookedCount = aggregateResult._sum.quantity || 0;
-            const available = bikeType.totalStock - bikeType.brokenCount - bookedCount;
-            if (available < data.quantity) {
-                throw new Error("No longer available");
+                const bookedCount = aggregateResult._sum.quantity || 0;
+                const available = bikeType.totalStock - bikeType.brokenCount - bookedCount;
+
+                if (available < item.quantity) {
+                    throw new Error(`Bike ${bikeType.name} is no longer available in requested quantity.`);
+                }
+
+                const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                const itemPrice = (bikeType.costPerHour || 0) * durationHours * item.quantity;
+                totalPrice += itemPrice;
+
+                createdItemsData.push({
+                    bikeTypeId: item.bikeTypeId,
+                    quantity: item.quantity,
+                    price: itemPrice
+                });
             }
 
             // 2. Create Booking
             const token = randomUUID();
-            return await tx.booking.create({
+            const booking = await tx.booking.create({
                 data: {
                     tenantSlug: data.slug,
-                    bikeTypeId: data.bikeTypeId,
                     status: "PENDING_CONFIRM",
                     startTime,
                     endTime,
-                    quantity: data.quantity,
+                    // Legacy fields (optional but populated for primary item)
+                    bikeTypeId: primaryItem.bikeTypeId,
+                    quantity: bookingItems.reduce((acc, i) => acc + i.quantity, 0),
+
                     customerName: data.customerName,
                     customerEmail: data.customerEmail,
                     customerPhone: data.customerPhone,
                     confirmationToken: token,
-                    // 30 min expiry
-                    expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-                    totalPrice: (bikeType.costPerHour || 0) * ((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)) * data.quantity,
+                    expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 min expiry
+                    totalPrice: totalPrice,
+
+                    items: {
+                        create: createdItemsData
+                    }
                 },
             });
+
+            return booking;
         });
 
         // 3. Send Email
@@ -167,8 +203,8 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
             entityId: booking.id,
             metadata: {
                 email: data.customerEmail,
-                quantity: data.quantity,
-                bikeTypeId: data.bikeTypeId,
+                itemsCount: bookingItems.length,
+                totalQuantity: bookingItems.reduce((acc, i) => acc + i.quantity, 0),
                 slotId: data.slotId
             }
         });

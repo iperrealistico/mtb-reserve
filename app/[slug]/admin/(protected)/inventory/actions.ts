@@ -19,6 +19,7 @@ export async function createBikeTypeAction(formData: FormData) {
             name,
             totalStock,
             brokenCount: 0,
+            description: formData.get("description") as string,
             costPerHour: Number(formData.get("costPerHour")) || 0
         }
     });
@@ -39,6 +40,7 @@ export async function updateBikeTypeAction(formData: FormData) {
         data: {
             totalStock,
             brokenCount,
+            description: formData.get("description") as string,
             costPerHour: Number(formData.get("costPerHour")) || 0
         }
     });

@@ -33,19 +33,44 @@ export function BookingActions({ booking, slug }: BookingActionsProps) {
     const [paidOpen, setPaidOpen] = useState(false);
     const [amount, setAmount] = useState<number>(0);
 
-    const handleStatusUpdate = async (status: string) => {
+    // Confirmation State
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+    const [notifyUser, setNotifyUser] = useState(true);
+
+    const handleStatusClick = (status: string) => {
+        if (status === "CANCELLED" || status === "NO_SHOW") {
+            setPendingStatus(status);
+            setNotifyUser(true); // Default to sending email
+            setConfirmOpen(true);
+        } else {
+            // Direct update for other statuses
+            executeStatusUpdate(status, false);
+        }
+    };
+
+    const executeStatusUpdate = async (status: string, notify: boolean) => {
         try {
             if (status === "CANCELLED") {
                 const formData = new FormData();
                 formData.append("bookingId", booking.id);
                 formData.append("slug", slug);
+                formData.append("notifyUser", String(notify));
                 await cancelBookingAction(formData);
             } else {
-                await updateBookingStatusAction(booking.id, slug, status);
+                await updateBookingStatusAction(booking.id, slug, status, notify);
             }
             toast.success(`Booking marked as ${status}`);
         } catch (e) {
             toast.error("Failed to update status");
+        }
+        setConfirmOpen(false);
+        setPendingStatus(null);
+    };
+
+    const handleConfirm = () => {
+        if (pendingStatus) {
+            executeStatusUpdate(pendingStatus, notifyUser);
         }
     };
 
@@ -78,7 +103,7 @@ export function BookingActions({ booking, slug }: BookingActionsProps) {
                     <DropdownMenuSeparator />
 
                     {booking.status === 'PENDING_CONFIRM' && (
-                        <DropdownMenuItem onClick={() => handleStatusUpdate("CONFIRMED")}>
+                        <DropdownMenuItem onClick={() => handleStatusClick("CONFIRMED")}>
                             <CheckCircle className="mr-2 h-4 w-4" /> Confirm
                         </DropdownMenuItem>
                     )}
@@ -87,17 +112,17 @@ export function BookingActions({ booking, slug }: BookingActionsProps) {
                         <Wallet className="mr-2 h-4 w-4" /> Mark as Paid
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem onClick={() => handleStatusUpdate("COMPLETED")}>
+                    <DropdownMenuItem onClick={() => handleStatusClick("COMPLETED")}>
                         <CheckCircle className="mr-2 h-4 w-4" /> Mark Completed
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem onClick={() => handleStatusUpdate("NO_SHOW")}>
+                    <DropdownMenuItem onClick={() => handleStatusClick("NO_SHOW")}>
                         <Ban className="mr-2 h-4 w-4" /> No Show
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator />
 
-                    <DropdownMenuItem className="text-red-600" onClick={() => handleStatusUpdate("CANCELLED")}>
+                    <DropdownMenuItem className="text-red-600" onClick={() => handleStatusClick("CANCELLED")}>
                         <XCircle className="mr-2 h-4 w-4" /> Cancel Booking
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -112,21 +137,49 @@ export function BookingActions({ booking, slug }: BookingActionsProps) {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="amount" className="text-right">
-                                Amount (€)
-                            </Label>
+                        <div className="grid gap-2">
+                            <Label htmlFor="amount">Amount (€)</Label>
                             <Input
                                 id="amount"
                                 type="number"
                                 value={amount}
                                 onChange={(e) => setAmount(Number(e.target.value))}
-                                className="col-span-3"
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button onClick={handlePaidSubmit}>Confirm Payment</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Update: {pendingStatus}</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to mark this booking as {pendingStatus}?
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex items-center space-x-2 py-4">
+                        <input
+                            type="checkbox"
+                            id="notify"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                            checked={notifyUser}
+                            onChange={(e) => setNotifyUser(e.target.checked)}
+                        />
+                        <Label htmlFor="notify" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Send notification email to user
+                        </Label>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+                        <Button onClick={handleConfirm} variant={pendingStatus === "CANCELLED" ? "destructive" : "default"}>
+                            Confirm
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
