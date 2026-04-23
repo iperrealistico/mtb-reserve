@@ -44,6 +44,16 @@ The primary threats to MTBR/MTB Reserve are:
 | `DATABASE_URL` | Connection string for the primary database (PostgreSQL). |
 | `RESEND_API_KEY` | Key for sending transactional emails. |
 
+## Shared Supabase Hardening
+
+The shared Supabase project must not expose core application tables through public
+PostgREST access. This app uses direct server-side Prisma/Postgres access and does
+not require anonymous table access.
+
+- Audit shared-table exposure with `npm run db:security:check`
+- Apply the checked-in RLS hardening with `npm run db:security:apply`
+- The source-of-truth SQL lives at `prisma/manual-migrations/20260423_enable_rls_on_shared_public_tables.sql`
+
 ## Secret Rotation
 
 1.  **Database URL:** Rotate credentials in database provider. Update Vercel env var immediately. Service interruption during update.
