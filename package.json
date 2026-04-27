@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && npx prisma db push --accept-data-loss && next build",
+    "build": "npx prisma generate && npx prisma db push --accept-data-loss && node scripts/backfill-public-slugs.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "db:security:check": "node scripts/shared-db-security.mjs",
