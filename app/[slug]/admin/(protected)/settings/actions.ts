@@ -1,16 +1,31 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { TenantSettings, DEFAULT_SLOTS, BlockedDateRange } from "@/lib/tenants";
+import {
+    TenantSettings,
+    DEFAULT_SLOTS,
+    BlockedDateRange,
+    getTenantBySlug,
+    getTenantRouteSlug,
+    slugifyTenantName,
+} from "@/lib/tenants";
 import { revalidatePath } from "next/cache";
 import { ensureAuthenticated, verifyPassword, hashPassword } from "@/lib/auth";
 import { logEvent } from "@/lib/events";
 
 export async function updateTenantSettingsAction(slug: string, formData: FormData) {
     await ensureAuthenticated(slug);
+    const tenant = await getTenantBySlug(slug);
+
+    if (!tenant) {
+        return { error: "Tenant not found" };
+    }
+
+    const previousRouteSlug = getTenantRouteSlug(tenant);
 
     const contactEmail = formData.get("contactEmail") as string;
     const contactPhone = formData.get("contactPhone") as string;
+    const requestedPublicSlug = formData.get("publicSlug") as string;
 
     const slotsStr = formData.get("slots") as string;
     const fullDayEnabled = formData.get("fullDayEnabled") === "on";
@@ -53,8 +68,26 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
     }
 
     // Get existing settings to merge
-    const existingTenant = await db.tenant.findUnique({ where: { slug } });
+    const existingTenant = await db.tenant.findUnique({ where: { slug: tenant.slug } });
     const existingSettings = (existingTenant?.settings as TenantSettings) || {};
+
+    const normalizedPublicSlug = slugifyTenantName(requestedPublicSlug || tenant.publicSlug || tenant.slug);
+
+    if (tenant.isPublished && normalizedPublicSlug !== (tenant.publicSlug || tenant.slug)) {
+        return { error: "Shop URL can no longer be changed after publication." };
+    }
+
+    const conflictingTenant = await db.tenant.findFirst({
+        where: {
+            publicSlug: normalizedPublicSlug,
+            NOT: { slug: tenant.slug },
+        },
+        select: { slug: true },
+    });
+
+    if (conflictingTenant) {
+        return { error: "That shop URL is already taken." };
+    }
 
     const settings: TenantSettings = {
         ...existingSettings,
@@ -76,26 +109,84 @@ export async function updateTenantSettingsAction(slug: string, formData: FormDat
     };
 
     try {
-        await db.tenant.update({
-            where: { slug },
+        const updatedTenant = await db.tenant.update({
+            where: { slug: tenant.slug },
             data: {
                 contactEmail,
                 contactPhone,
+                publicSlug: normalizedPublicSlug,
                 settings: settings as object // Prisma JSON
             }
         });
 
+        const routeSlug = getTenantRouteSlug(updatedTenant);
+
         try {
-            revalidatePath(`/${slug}/admin/settings`);
-            revalidatePath(`/${slug}`);
+            revalidatePath(`/${previousRouteSlug}/admin/settings`);
+            revalidatePath(`/${routeSlug}/admin/settings`);
+            revalidatePath(`/${previousRouteSlug}/admin/dashboard`);
+            revalidatePath(`/${routeSlug}/admin/dashboard`);
+            revalidatePath(`/${previousRouteSlug}`);
+            revalidatePath(`/${routeSlug}`);
         } catch {
             // Ignored for script testing or if outside request context
         }
 
-        return { success: true };
+        return { success: true, routeSlug };
     } catch (error: unknown) {
         return { error: (error as Error).message || "Update failed" };
     }
+}
+
+export async function publishTenantProfileAction(slug: string) {
+    await ensureAuthenticated(slug);
+    const tenant = await getTenantBySlug(slug);
+
+    if (!tenant) {
+        return { error: "Tenant not found" };
+    }
+
+    const previousRouteSlug = getTenantRouteSlug(tenant);
+
+    if (tenant.isPublished) {
+        return { success: true, routeSlug: previousRouteSlug };
+    }
+
+    const publicSlug = tenant.publicSlug || tenant.slug;
+    if (!publicSlug) {
+        return { error: "Set your shop URL before publishing." };
+    }
+
+    const updatedTenant = await db.tenant.update({
+        where: { slug: tenant.slug },
+        data: {
+            publicSlug,
+            isPublished: true,
+            publishedAt: tenant.publishedAt || new Date(),
+        },
+    });
+
+    await logEvent({
+        level: "INFO",
+        tenantId: tenant.slug,
+        actorType: "TENANT_ADMIN",
+        actorId: tenant.slug,
+        eventType: "TENANT_PROFILE_PUBLISHED",
+        message: "Tenant profile published from settings",
+    });
+
+    const routeSlug = getTenantRouteSlug(updatedTenant);
+
+    try {
+        revalidatePath(`/${previousRouteSlug}/admin/settings`);
+        revalidatePath(`/${routeSlug}/admin/settings`);
+        revalidatePath(`/${previousRouteSlug}`);
+        revalidatePath(`/${routeSlug}`);
+    } catch {
+        // Ignored for script testing or if outside request context
+    }
+
+    return { success: true, routeSlug };
 }
 
 export async function changePasswordAction(prevState: any, formData: FormData) {
@@ -120,8 +211,11 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
         return { success: false, error: "Password does not meet requirements" };
     }
 
+    const routeTenant = await getTenantBySlug(slug);
+    if (!routeTenant) return { success: false, error: "Tenant not found" };
+
     const tenant = await db.tenant.findUnique({
-        where: { slug }
+        where: { slug: routeTenant.slug }
     });
 
     if (!tenant) return { success: false, error: "Tenant not found" };
@@ -131,9 +225,9 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
     if (!isCorrect) {
         await logEvent({
             level: "WARN",
-            tenantId: slug,
+            tenantId: routeTenant.slug,
             actorType: "TENANT_ADMIN",
-            actorId: slug,
+            actorId: routeTenant.slug,
             eventType: "PASSWORD_CHANGE_FAILED",
             message: "Failed password change attempt: Incorrect current password"
         });
@@ -143,7 +237,7 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
     // Update
     const newHash = await hashPassword(newPassword);
     await db.tenant.update({
-        where: { slug },
+        where: { slug: routeTenant.slug },
         data: {
             adminPasswordHash: newHash,
             tokenVersion: { increment: 1 } // Invalidate other sessions
@@ -156,9 +250,9 @@ export async function changePasswordAction(prevState: any, formData: FormData) {
 
     await logEvent({
         level: "INFO",
-        tenantId: slug,
+        tenantId: routeTenant.slug,
         actorType: "TENANT_ADMIN",
-        actorId: slug,
+        actorId: routeTenant.slug,
         eventType: "PASSWORD_CHANGED",
         message: "Tenant password updated successfully"
     });

@@ -3,14 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createBikeTypeAction, updateBikeTypeAction, deleteBikeTypeAction } from "./actions";
-import { Trash2, Save, Plus } from "lucide-react";
+import { Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import DeleteBikeForm from "./delete-bike-form";
+import { getTenantBySlug } from "@/lib/tenants";
 
 export default async function InventoryPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
+    const tenant = await getTenantBySlug(slug);
+
+    if (!tenant) {
+        return null;
+    }
+
     const bikeTypes = await db.bikeType.findMany({
-        where: { tenantSlug: slug },
+        where: { tenantSlug: tenant.slug },
         orderBy: { name: 'asc' }
     });
 

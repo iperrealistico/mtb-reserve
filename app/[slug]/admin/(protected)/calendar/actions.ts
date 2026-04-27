@@ -39,7 +39,7 @@ export async function getDailyBookingsAction(slug: string, dateString: string) {
 
     const bookings = await db.booking.findMany({
         where: {
-            tenantSlug: slug,
+            tenantSlug: tenant.slug,
             startTime: {
                 gte: startTime,
                 lte: endTime

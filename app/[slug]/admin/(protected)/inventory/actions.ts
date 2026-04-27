@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { ensureAuthenticated } from "@/lib/auth";
+import { getTenantBySlug } from "@/lib/tenants";
 
 export async function createBikeTypeAction(formData: FormData) {
     const slug = formData.get("slug") as string;
@@ -13,9 +14,12 @@ export async function createBikeTypeAction(formData: FormData) {
 
     if (!slug || !name) return { error: "Missing fields" };
 
+    const tenant = await getTenantBySlug(slug);
+    if (!tenant) return { error: "Tenant not found" };
+
     await db.bikeType.create({
         data: {
-            tenantSlug: slug,
+            tenantSlug: tenant.slug,
             name,
             totalStock,
             brokenCount: 0,

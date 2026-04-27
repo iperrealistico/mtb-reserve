@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
+import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Bike, Store, ArrowRight, CheckCircle2, ChevronRight, Mail, Loader2, ArrowLeft, LogIn, Info } from "lucide-react";
+import { Search, Bike, Store, ArrowRight, CheckCircle2, Mail, Loader2, ArrowLeft, LogIn, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { submitJoinRequest } from "./actions";
-import { cn } from "@/lib/utils";
+import AltchaWidget from "@/components/altcha-widget";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -245,7 +245,7 @@ export default function LandingPage() {
 
 function JoinRequestModal({ trigger }: { trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [state, action, isPending] = useActionState(submitJoinRequest, { success: false, error: "" });
+  const [state, action, isPending] = useActionState(submitJoinRequest, { success: false, error: "", message: "" });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -279,7 +279,7 @@ function JoinRequestModal({ trigger }: { trigger: React.ReactNode }) {
               <div className="space-y-2">
                 <h3 className="text-3xl font-bold text-white font-outfit">Application Received!</h3>
                 <p className="text-neutral-400 text-lg max-w-sm mx-auto font-outfit">
-                  Check your email inbox. We will contact you within 24 hours.
+                  {state.message || "If everything looks good, access will arrive by email shortly."}
                 </p>
               </div>
               <Button onClick={() => setOpen(false)} className="h-12 px-8 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl font-bold font-outfit">
@@ -323,6 +323,14 @@ function JoinRequestModal({ trigger }: { trigger: React.ReactNode }) {
               <div className="space-y-1.5">
                 <Label htmlFor="message" className="text-neutral-300 font-medium font-outfit">Fleet Details</Label>
                 <Textarea id="message" name="message" className="bg-neutral-900 border-neutral-800 min-h-[80px] focus:ring-blue-500 rounded-xl resize-none p-3 font-outfit" placeholder="How many bikes?" />
+              </div>
+
+              <div className="space-y-2 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4">
+                <Label className="text-neutral-300 font-medium font-outfit">Verification</Label>
+                <AltchaWidget challengeUrl="/api/altcha/challenge" className="w-full" />
+                <p className="text-[11px] text-neutral-500 font-outfit">
+                  We use an open proof-of-work challenge to block bots without relying on invasive tracking.
+                </p>
               </div>
 
               {state.error && (

@@ -10,6 +10,9 @@ datasource db {
 
 model Tenant {
   slug                String   @id
+  publicSlug          String?  @unique
+  isPublished         Boolean  @default(true)
+  publishedAt         DateTime?
   name                String
   adminPasswordHash   String
   contactEmail        String
@@ -29,6 +32,7 @@ model Tenant {
 
   bikeTypes           BikeType[]
   bookings            Booking[]
+  signupRequests      SignupRequest[]
   
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -146,6 +150,23 @@ model RateLimit {
   expiresAt DateTime
 }
 
+enum SignupProvisioningStatus {
+  PENDING
+  PROVISIONED
+  DUPLICATE
+  EMAIL_FAILED
+  FAILED
+}
+
+enum InboxThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum InboxMessageDirection {
+  INBOUND
+  OUTBOUND
+}
 
 enum LogLevel {
   INFO
@@ -213,17 +234,85 @@ model SystemSettings {
 
 
 model SignupRequest {
-  id        String   @id @default(cuid())
-  firstName String
-  lastName  String
-  email     String
-  phone     String
-  organization String
-  address   String?
-  message   String?
-  status    String   @default("PENDING") // PENDING, REPLIED, ARCHIVED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String                    @id @default(cuid())
+  firstName          String
+  lastName           String
+  email              String
+  phone              String
+  organization       String
+  address            String?
+  message            String?
+  status             String                    @default("PENDING") // PENDING, REPLIED, ARCHIVED
+  provisioningStatus SignupProvisioningStatus  @default(PENDING)
+  failureReason      String?
+  tenantSlug         String?
+  provisionedAt      DateTime?
+  tenant             Tenant?                   @relation(fields: [tenantSlug], references: [slug], onDelete: SetNull)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  @@index([email, createdAt])
+  @@index([tenantSlug])
+  @@index([provisioningStatus, createdAt])
+}
+
+model InboxThread {
+  id              String            @id @default(cuid())
+  mailbox         String
+  participantEmail String
+  participantName String?
+  subject         String
+  normalizedSubject String
+  status          InboxThreadStatus @default(OPEN)
+  unreadCount     Int               @default(0)
+  latestMessageAt DateTime          @default(now())
+  lastInboundAt   DateTime?
+  lastOutboundAt  DateTime?
+  messages        InboxMessage[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([mailbox, latestMessageAt])
+  @@index([mailbox, participantEmail, normalizedSubject])
+}
+
+model InboxMessage {
+  id               String                @id @default(cuid())
+  threadId         String
+  direction        InboxMessageDirection
+  resendEmailId    String?               @unique
+  messageId        String?               @unique
+  inReplyTo        String?
+  referencesHeader String?
+  fromAddress      String
+  toAddresses      Json
+  ccAddresses      Json?
+  subject          String
+  textBody         String?
+  htmlBody         String?
+  receivedAt       DateTime?
+  sentAt           DateTime?
+  attachments      InboxAttachment[]
+  thread           InboxThread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([threadId, createdAt])
+  @@index([direction, createdAt])
+}
+
+model InboxAttachment {
+  id                 String       @id @default(cuid())
+  messageId          String
+  resendAttachmentId String       @unique
+  filename           String
+  contentType        String
+  contentDisposition String?
+  contentId          String?
+  message            InboxMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt          DateTime     @default(now())
+
+  @@index([messageId])
 }
 
 model AboutPageContent {

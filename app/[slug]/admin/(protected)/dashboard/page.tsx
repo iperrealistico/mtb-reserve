@@ -2,17 +2,23 @@ import { db } from "@/lib/db";
 import { startOfDay, endOfDay, format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { CalendarDays, Users, AlertCircle } from "lucide-react";
-import { Booking, BikeType } from "@prisma/client";
 import BookingList from "./booking-list";
+import { getTenantBySlug } from "@/lib/tenants";
 
 export default async function DashboardPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
+    const tenant = await getTenantBySlug(slug);
+
+    if (!tenant) {
+        return null;
+    }
+
     const today = new Date();
 
     // 1. Fetch Today's stats
     const todayBookings = await db.booking.findMany({
         where: {
-            tenantSlug: slug,
+            tenantSlug: tenant.slug,
             startTime: {
                 gte: startOfDay(today),
                 lte: endOfDay(today),
@@ -24,7 +30,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ slug
 
     const pendingCount = await db.booking.count({
         where: {
-            tenantSlug: slug,
+            tenantSlug: tenant.slug,
             status: 'PENDING_CONFIRM',
             endTime: { gte: today }
         }
@@ -32,7 +38,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ slug
 
     // 2. Fetch All Bookings for the List
     const allBookings = await db.booking.findMany({
-        where: { tenantSlug: slug },
+        where: { tenantSlug: tenant.slug },
         include: { bikeType: true },
         orderBy: { startTime: 'desc' },
         take: 200 // Limit for performance

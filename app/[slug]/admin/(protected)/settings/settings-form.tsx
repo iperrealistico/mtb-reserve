@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2, Plus, Calendar, AlertCircle, Clock } from "lucide-react";
-import { updateTenantSettingsAction } from "./actions";
+import { publishTenantProfileAction, updateTenantSettingsAction } from "./actions";
 import { TenantSettings, TenantSlot, BlockedDateRange } from "@/lib/tenants";
 import { toast } from "sonner";
 import { useMemo } from "react";
@@ -14,19 +15,25 @@ export default function SettingsForm({
     slug,
     initialEmail,
     initialPhone,
+    initialPublicSlug,
+    isPublished,
     initialSettings
 }: {
     slug: string,
     initialEmail: string,
     initialPhone: string,
+    initialPublicSlug: string,
+    isPublished: boolean,
     initialSettings: TenantSettings
 }) {
+    const router = useRouter();
     const [fullDayEnabled, setFullDayEnabled] = useState(initialSettings.fullDayEnabled ?? true);
     const [slots, setSlots] = useState<TenantSlot[]>(initialSettings.slots || []);
     const [blockedDateRanges, setBlockedDateRanges] = useState<BlockedDateRange[]>(
         initialSettings.blockedDateRanges || []
     );
     const [loading, setLoading] = useState(false);
+    const [publishLoading, setPublishLoading] = useState(false);
 
     // Overlap Detection Logic
     const overlaps = useMemo(() => {
@@ -68,10 +75,33 @@ export default function SettingsForm({
 
         if (result.success) {
             toast.success("Settings updated");
+            if (result.routeSlug && result.routeSlug !== slug) {
+                router.replace(`/${result.routeSlug}/admin/settings`);
+            } else {
+                router.refresh();
+            }
         } else {
             toast.error(result.error);
         }
         setLoading(false);
+    };
+
+    const handlePublish = async () => {
+        setPublishLoading(true);
+        const result = await publishTenantProfileAction(slug);
+
+        if (result.success) {
+            toast.success("Profile published");
+            if (result.routeSlug && result.routeSlug !== slug) {
+                router.replace(`/${result.routeSlug}/admin/settings`);
+            } else {
+                router.refresh();
+            }
+        } else {
+            toast.error(result.error);
+        }
+
+        setPublishLoading(false);
     };
 
     const addSlot = () => {
@@ -111,6 +141,63 @@ export default function SettingsForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 max-w-2xl">
+            <div className="bg-white p-6 rounded-lg shadow space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 className="text-lg font-medium">Profile Visibility</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Your shop stays private until you explicitly publish it.
+                        </p>
+                    </div>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${isPublished
+                        ? "bg-green-100 text-green-700"
+                        : "bg-amber-100 text-amber-700"
+                        }`}>
+                        {isPublished ? "Published" : "Private"}
+                    </span>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="publicSlug">Shop URL</Label>
+                    <Input
+                        id="publicSlug"
+                        name="publicSlug"
+                        defaultValue={initialPublicSlug}
+                        disabled={isPublished}
+                        required
+                    />
+                    <p className="text-xs text-gray-500">
+                        Public URL: <span className="font-mono">/{initialPublicSlug}</span>
+                    </p>
+                    {isPublished ? (
+                        <p className="text-xs text-gray-500">
+                            The public URL is locked after publication in this version.
+                        </p>
+                    ) : (
+                        <p className="text-xs text-gray-500">
+                            Save changes before publishing if you want to adjust the final public URL.
+                        </p>
+                    )}
+                </div>
+
+                {!isPublished && (
+                    <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-4">
+                        <p className="text-sm text-amber-900">
+                            Publishing makes your booking page reachable at the public URL above.
+                        </p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-3 border-amber-300 text-amber-900 hover:bg-amber-100"
+                            disabled={publishLoading}
+                            onClick={handlePublish}
+                        >
+                            {publishLoading ? "Publishing..." : "Publish Profile"}
+                        </Button>
+                    </div>
+                )}
+            </div>
+
             {/* Contact Info */}
             <div className="bg-white p-6 rounded-lg shadow space-y-4">
                 <h3 className="text-lg font-medium">Contact Info</h3>

@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getTenantBySlug, getTenantRouteSlug } from "@/lib/tenants";
 
 export default async function AdminRedirectPage({
     params,
@@ -8,10 +9,12 @@ export default async function AdminRedirectPage({
 }) {
     const { slug } = await params;
     const session = await getSession();
+    const tenant = await getTenantBySlug(slug);
+    const routeSlug = tenant ? getTenantRouteSlug(tenant) : slug;
 
-    if (session.isLoggedIn && session.tenantSlug === slug) {
-        redirect(`/${slug}/admin/dashboard`);
+    if (session.isLoggedIn && (session.isSuperAdmin || (tenant && session.tenantSlug === tenant.slug))) {
+        redirect(`/${routeSlug}/admin/dashboard`);
     } else {
-        redirect(`/${slug}/admin/login`);
+        redirect(`/${routeSlug}/admin/login`);
     }
 }

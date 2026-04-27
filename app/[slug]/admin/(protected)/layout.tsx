@@ -12,6 +12,9 @@ export default async function AdminProtectedLayout({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
+    const tenant = await getTenantBySlug(slug);
+
+    if (!tenant) notFound();
 
     // 1. Verify Session
     const session = await getSession();
@@ -19,13 +22,9 @@ export default async function AdminProtectedLayout({
         redirect(`/${slug}/admin/login`);
     }
 
-    if (!session.isSuperAdmin && session.tenantSlug !== slug) {
+    if (!session.isSuperAdmin && session.tenantSlug !== tenant.slug) {
         redirect(`/${slug}/admin/login`);
     }
-
-    // 2. Verify Tenant exists (optional but good for safety)
-    const tenant = await getTenantBySlug(slug);
-    if (!tenant) notFound();
 
     return (
         <div className="min-h-screen bg-gray-50">

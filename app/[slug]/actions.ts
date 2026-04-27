@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { getBikeAvailability, AvailabilityResult } from "@/lib/availability";
 import { bookingSchema } from "@/lib/schemas";
-import { getTenantBySlug, getTenantSettings, TenantSlot, getComputedSlots } from "@/lib/tenants";
+import { getTenantBySlug, getTenantSettings, getComputedSlots, getTenantRouteSlug } from "@/lib/tenants";
 import { randomUUID } from "crypto";
 
 // ... imports
@@ -30,7 +30,7 @@ export async function getAvailabilityAction(slug: string, date: Date) {
         // We should fetch full settings earlier.
         // Refactoring slightly to reuse the full settings object.
         const allSettings = getTenantSettings(tenant);
-        result[slot.id] = await getBikeAvailability(slug, date, slot.start, slot.end, timezone, allSettings);
+        result[slot.id] = await getBikeAvailability(tenant.slug, date, slot.start, slot.end, timezone, allSettings);
     }
 
     return { slots: settings, availability: result, timezone };
@@ -126,7 +126,7 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
                     where: {
                         bikeTypeId: item.bikeTypeId,
                         booking: {
-                            tenantSlug: data.slug,
+                            tenantSlug: tenant.slug,
                             AND: [
                                 { startTime: { lt: endTime } },
                                 { endTime: { gt: startTime } },
@@ -166,7 +166,7 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
             const token = randomUUID();
             const booking = await tx.booking.create({
                 data: {
-                    tenantSlug: data.slug,
+                    tenantSlug: tenant.slug,
                     status: "PENDING_CONFIRM",
                     startTime,
                     endTime,
@@ -191,12 +191,12 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
         });
 
         // 3. Send Email
-        await sendConfirmationLink(data.customerEmail, data.slug, booking.confirmationToken!);
+        await sendConfirmationLink(data.customerEmail, getTenantRouteSlug(tenant), booking.confirmationToken!);
 
         await logEvent({
             level: "INFO",
             actorType: "GUEST",
-            tenantId: data.slug,
+            tenantId: tenant.slug,
             eventType: "BOOKING_REQUESTED",
             message: "Booking requested by guest",
             entityType: "Booking",

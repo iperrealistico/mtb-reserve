@@ -1,11 +1,11 @@
-import { getTenantBySlug } from "@/lib/tenants";
+import { getPublishedTenantBySlug } from "@/lib/tenants";
 import { notFound } from "next/navigation";
 import { Phone, Mail } from "lucide-react";
 import BookingWizard from "@/components/booking/booking-wizard";
 
 export default async function BookingPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
-    const tenant = await getTenantBySlug(slug);
+    const tenant = await getPublishedTenantBySlug(slug);
 
     if (!tenant) {
         notFound();
@@ -49,7 +49,7 @@ export default async function BookingPage({ params }: { params: Promise<{ slug: 
                     return null;
                 })()}
 
-                <BookingWizard tenant={tenant} />
+                <BookingWizard tenant={tenant} routeSlug={slug} />
             </div>
 
             <div className="mt-8 text-center text-xs text-gray-400">

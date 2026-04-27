@@ -6,8 +6,11 @@ vi.mock('@/lib/db', () => ({
     db: {
         booking: {
             findUnique: vi.fn(),
-            aggregate: vi.fn(),
+            findFirst: vi.fn(),
             update: vi.fn(),
+        },
+        bookingItem: {
+            aggregate: vi.fn(),
         },
         $transaction: vi.fn((cb) => cb(db)),
     },
@@ -19,6 +22,10 @@ vi.mock('@/lib/recaptcha', () => ({
 
 vi.mock('@/lib/email', () => ({
     sendEmail: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('@/lib/rate-limit', () => ({
+    rateLimit: vi.fn().mockResolvedValue({ success: true, limit: 5, remaining: 4, reset: new Date() }),
 }));
 
 describe('confirmBookingAction', () => {
@@ -42,12 +49,12 @@ describe('confirmBookingAction', () => {
             tenant: { contactEmail: 'admin@test.com', name: 'T1' }
         };
         (db.booking.findUnique as any).mockResolvedValue(booking);
-        (db.booking.aggregate as any).mockResolvedValue({ _sum: { quantity: 0 } });
+        (db.bookingItem.aggregate as any).mockResolvedValue({ _sum: { quantity: 0 } });
 
         const formData = new FormData();
         formData.append('token', 'tkn1');
         formData.append('tos', 'on');
-        formData.append('recaptchaToken', 'mock');
+        formData.append('responsibility', 'on');
 
         const result = await confirmBookingAction({}, formData);
 

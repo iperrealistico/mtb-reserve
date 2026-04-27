@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { generateSecureItalianPassword, hashPassword } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, sendTenantOnboardingEmail } from "@/lib/email";
+import { getTenantRouteSlug } from "@/lib/tenants";
 
 // --- Types ---
 interface ActionState {
@@ -25,7 +26,15 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
     }
 
     // Check slug uniqueness
-    const existing = await db.tenant.findUnique({ where: { slug } });
+    const existing = await db.tenant.findFirst({
+        where: {
+            OR: [
+                { slug },
+                { publicSlug: slug },
+            ],
+        },
+        select: { slug: true },
+    });
     if (existing) {
         return { success: false, error: "Slug is already taken." };
     }
@@ -37,6 +46,9 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
         const tenant = await db.tenant.create({
             data: {
                 slug,
+                publicSlug: slug,
+                isPublished: false,
+                publishedAt: null,
                 name,
                 contactEmail,
                 registrationEmail,
@@ -47,19 +59,11 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
         });
 
         // Email the password to the tenant
-        await sendEmail({
-            to: contactEmail,
-            subject: `Welcome to MTB Reserve - Your Admin Access`,
-            category: 'onboarding',
-            entityId: slug,
-            html: `
-                <h1>Welcome, ${name}!</h1>
-                <p>Your tenant account has been created.</p>
-                <p><strong>Admin Portal:</strong> <a href="${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/admin/login">${process.env.NEXT_PUBLIC_BASE_URL}/${slug}/admin/login</a></p>
-                <p><strong>Username:</strong> ${registrationEmail} (or manage via this email)</p>
-                <p><strong>Password:</strong> ${password}</p>
-                <p>Please log in and change your password immediately.</p>
-            `
+        await sendTenantOnboardingEmail({
+            name,
+            registrationEmail,
+            password,
+            routeSlug: slug,
         });
     } catch (e) {
         return { success: false, error: "Failed to create tenant. " + e };

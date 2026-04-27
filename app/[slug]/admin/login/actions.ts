@@ -2,7 +2,7 @@
 
 // ... imports
 import { getSession, verifyPassword } from "@/lib/auth";
-import { getTenantBySlug } from "@/lib/tenants";
+import { getTenantBySlug, getTenantRouteSlug } from "@/lib/tenants";
 import { rateLimit } from "@/lib/rate-limit";
 // Removed verifyRecaptcha import
 import { headers } from "next/headers";
@@ -76,7 +76,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     session.tokenVersion = tenant.tokenVersion;
     await session.save();
 
-    redirect(`/${slug}/admin/dashboard`);
+    redirect(`/${getTenantRouteSlug(tenant)}/admin/dashboard`);
 }
 
 export async function logoutAction(slug: string) {

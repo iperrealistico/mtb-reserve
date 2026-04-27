@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ConfirmationForm from "./confirmation-form";
 import { format } from "date-fns";
 import { CheckCircle } from "lucide-react";
+import { getTenantRouteSlug } from "@/lib/tenants";
 
 export default async function BookingConfirmationPage({ params }: { params: Promise<{ slug: string, token: string }> }) {
     const { slug, token } = await params;
@@ -30,7 +31,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
     }
 
     // Security check: Ensure slug matches (though token is unique globally, context matters)
-    if (booking.tenantSlug !== slug) notFound();
+    if (getTenantRouteSlug(booking.tenant) !== slug) notFound();
 
     if (booking.status === "CONFIRMED") {
         return (

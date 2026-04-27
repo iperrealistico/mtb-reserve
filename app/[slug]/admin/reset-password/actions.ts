@@ -2,8 +2,8 @@
 
 import { db } from "@/lib/db";
 import { hashPassword, generateSecureItalianPassword } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { sendEmail } from "@/lib/email";
+import { getTenantBySlug } from "@/lib/tenants";
 
 export async function resetPasswordAction(prevState: any, formData: FormData) {
     const slug = formData.get("slug") as string;
@@ -12,9 +12,12 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
     if (!slug || !token) return { success: false, error: "Invalid request" };
 
     // 1. Validate Token
+    const routeTenant = await getTenantBySlug(slug);
+    if (!routeTenant) return { success: false, error: "Invalid request" };
+
     const tenant = await db.tenant.findFirst({
         where: {
-            slug,
+            slug: routeTenant.slug,
             passwordResetToken: token,
             passwordResetExpires: { gt: new Date() } // Must not be expired
         }
@@ -30,7 +33,7 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
 
     // 3. Update Tenant
     await db.tenant.update({
-        where: { slug },
+        where: { slug: tenant.slug },
         data: {
             adminPasswordHash: newHash,
             tokenVersion: { increment: 1 }, // Invalidate sessions
@@ -43,10 +46,10 @@ export async function resetPasswordAction(prevState: any, formData: FormData) {
     // Requirement: "Plaintext may only appear to the tenant via email during reset, never in UI"
 
     await sendEmail({
-        to: tenant.contactEmail,
+        to: tenant.registrationEmail,
         subject: `Your New Password for ${tenant.name}`,
         category: 'password_reset',
-        entityId: slug,
+        entityId: tenant.slug,
         html: `
             <p>Your password has been reset successfully.</p>
             <p><strong>New Password:</strong> ${newPassword}</p>

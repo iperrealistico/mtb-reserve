@@ -77,11 +77,6 @@ export async function ensureAuthenticated(slug?: string) {
             throw new Error("Session invalid. Please log in again.");
         }
     } else if (session.tenantSlug) {
-        // Correct tenant check
-        if (slug && session.tenantSlug !== slug) {
-            throw new Error("Forbidden: You do not have access to this tenant.");
-        }
-
         const tenant = await db.tenant.findUnique({
             where: { slug: session.tenantSlug },
             select: { tokenVersion: true }
@@ -93,8 +88,40 @@ export async function ensureAuthenticated(slug?: string) {
         }
     }
 
-    if (slug && !session.isSuperAdmin && session.tenantSlug !== slug) {
-        throw new Error("Forbidden: You do not have access to this tenant.");
+    if (slug && !session.isSuperAdmin) {
+        const targetTenant = await db.tenant.findFirst({
+            where: {
+                OR: [
+                    { slug },
+                    { publicSlug: slug },
+                ],
+            },
+            select: { slug: true },
+        });
+
+        if (!targetTenant || session.tenantSlug !== targetTenant.slug) {
+            throw new Error("Forbidden: You do not have access to this tenant.");
+        }
+    }
+
+    return session;
+}
+
+export async function ensureSuperAdmin() {
+    const session = await getSession();
+
+    if (!session.isLoggedIn || !session.isSuperAdmin || !session.superAdminId) {
+        throw new Error("Unauthorized");
+    }
+
+    const admin = await db.superAdmin.findUnique({
+        where: { id: session.superAdminId },
+        select: { tokenVersion: true },
+    });
+
+    if (!admin || admin.tokenVersion !== (session.tokenVersion || 0)) {
+        session.destroy();
+        throw new Error("Session invalid. Please log in again.");
     }
 
     return session;

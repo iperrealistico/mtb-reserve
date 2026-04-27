@@ -7,6 +7,7 @@ import TenantPasswordReset from "./password-reset";
 import { deleteTenantAction } from "../../actions";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getTenantRouteSlug } from "@/lib/tenants";
 
 export default async function TenantDetailPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
@@ -16,6 +17,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
     });
 
     if (!tenant) notFound();
+    const routeSlug = getTenantRouteSlug(tenant);
 
     // Delete action wrapper to satisfy TS and handle prevState
     const deleteAction = async (formData: FormData) => {
@@ -28,7 +30,18 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Manage: {tenant.name}</h1>
-                    <p className="text-sm text-gray-500 mt-1">/{tenant.slug}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                        <span>Internal slug: /{tenant.slug}</span>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                            Public: /{routeSlug}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tenant.isPublished
+                            ? "bg-green-100 text-green-700"
+                            : "bg-amber-100 text-amber-700"
+                            }`}>
+                            {tenant.isPublished ? "Published" : "Private"}
+                        </span>
+                    </div>
                 </div>
                 <Link href="/admin" className="text-gray-500 hover:text-gray-900 text-sm">
                     Back to Dashboard
@@ -58,7 +71,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ s
                     Open this tenant&apos;s admin panel in a new tab (you&apos;ll be logged in as Super Admin).
                 </p>
                 <a
-                    href={`/${tenant.slug}/admin/dashboard`}
+                    href={`/${routeSlug}/admin/dashboard`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center"

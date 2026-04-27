@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import Link from "next/link";
 import { Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getTenantRouteSlug } from "@/lib/tenants";
 
 export default async function SuperAdminDashboard() {
     const tenants = await db.tenant.findMany({
@@ -49,9 +50,18 @@ export default async function SuperAdminDashboard() {
                                                     <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-normal">
                                                         /{tenant.slug}
                                                     </span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tenant.isPublished
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-amber-100 text-amber-700"
+                                                        }`}>
+                                                        {tenant.isPublished ? "Published" : "Private"}
+                                                    </span>
                                                 </div>
                                                 <div className="text-sm text-gray-500 mt-1">
                                                     {tenant.contactEmail}
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                    Public URL: /{getTenantRouteSlug(tenant)}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-8">

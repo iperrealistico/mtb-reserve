@@ -67,6 +67,8 @@ export default async function SettingsPage({
                         slug={slug}
                         initialEmail={tenant.contactEmail}
                         initialPhone={tenant.contactPhone || ""}
+                        initialPublicSlug={tenant.publicSlug || tenant.slug}
+                        isPublished={tenant.isPublished}
                         initialSettings={settings}
                     />
                 ) : (activeTab === "security" && (

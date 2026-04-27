@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 import { randomUUID } from "crypto";
 import { addMinutes } from "date-fns";
 import { redirect } from "next/navigation";
-import { sendEmail } from "@/lib/email";
+import { sendPasswordResetTemplateEmail } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
+import { getTenantBySlug, getTenantRouteSlug } from "@/lib/tenants";
 // Removed verifyRecaptcha import
 
 export async function requestPasswordResetAction(formData: FormData) {
@@ -31,9 +32,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     // 2. ReCAPTCHA - REMOVED
 
     // 2. Find Tenant
-    const tenant = await db.tenant.findUnique({
-        where: { slug },
-    }) as any;
+    const tenant = await getTenantBySlug(slug);
 
     // 3. Verify Email matches Registration Email
     if (tenant && tenant.registrationEmail.toLowerCase() === email.toLowerCase()) {
@@ -42,7 +41,7 @@ export async function requestPasswordResetAction(formData: FormData) {
         const expiresAt = addMinutes(new Date(), 15); // 15 min expiry
 
         await db.tenant.update({
-            where: { slug },
+            where: { slug: tenant.slug },
             data: {
                 passwordResetToken: token,
                 passwordResetExpires: expiresAt,
@@ -58,20 +57,13 @@ export async function requestPasswordResetAction(formData: FormData) {
 
         // Let's assume process.env.NEXT_PUBLIC_BASE_URL for now or hardcode for MVP if missing.
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://www.mtbreserve.com";
-        const link = `${baseUrl}/${slug}/admin/reset-password?token=${token}`;
+        const link = `${baseUrl}/${getTenantRouteSlug(tenant)}/admin/reset-password?token=${token}`;
 
-        await sendEmail({
+        await sendPasswordResetTemplateEmail({
             to: email,
-            subject: `Reset Password for ${tenant.name}`,
-            category: 'password_reset',
-            entityId: slug,
-            html: `
-                <p>Hello,</p>
-                <p>You requested a password reset for <strong>${tenant.name}</strong>.</p>
-                <p>Click the link below to reset your password (valid for 15 minutes):</p>
-                <p><a href="${link}">${link}</a></p>
-                <p>If you didn't request this, please ignore this email.</p>
-            `,
+            tenantName: tenant.name,
+            link,
+            entityId: tenant.slug,
         });
     }
 

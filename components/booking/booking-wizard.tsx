@@ -45,7 +45,13 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes: BikeType[] } }) {
+export default function BookingWizard({
+    tenant,
+    routeSlug,
+}: {
+    tenant: Tenant & { bikeTypes: BikeType[] };
+    routeSlug: string;
+}) {
     // State
     const [step, setStep] = useState<Step>("date");
     const [date, setDate] = useState<Date | undefined>(undefined);
@@ -101,14 +107,14 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
             setSelectedItems({}); // Reset bikes
             setStep("slot"); // Auto-advance
 
-            getAvailabilityAction(tenant.slug, date)
+            getAvailabilityAction(routeSlug, date)
                 .then((res) => {
                     setSlots(res.slots);
                     setAvailability(res.availability);
                 })
                 .finally(() => setLoadingSlots(false));
         }
-    }, [date, tenant.slug]);
+    }, [date, routeSlug]);
 
     // Handlers
     const handleSlotSelect = (slotId: string) => {
@@ -158,7 +164,7 @@ export default function BookingWizard({ tenant }: { tenant: Tenant & { bikeTypes
         }));
 
         const formData = new FormData();
-        formData.append("slug", tenant.slug);
+        formData.append("slug", routeSlug);
         formData.append("date", date!.toISOString());
         formData.append("slotId", selectedSlotId);
         formData.append("items", JSON.stringify(items));
