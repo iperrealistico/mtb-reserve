@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
-import { ReactNode } from "react";
 import AdminNav from "./nav";
 import { getTenantBySlug } from "@/lib/tenants";
 
@@ -28,7 +27,7 @@ export default async function AdminProtectedLayout({
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <AdminNav slug={slug} />
+            <AdminNav slug={slug} accountLabel={tenant.name} />
             <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
                 {children}
             </main>

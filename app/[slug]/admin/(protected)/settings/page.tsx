@@ -28,7 +28,7 @@ export default async function SettingsPage({
             </div>
 
             {/* Tabs */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="mb-8">
                 <div className="flex border-b border-gray-200 overflow-x-auto no-scrollbar">
                     <a
                         href={`/${slug}/admin/settings?tab=general`}
@@ -49,16 +49,6 @@ export default async function SettingsPage({
                         Security
                     </a>
                 </div>
-
-                <form action={async () => {
-                    "use server";
-                    const { logoutAction } = await import("../../login/actions");
-                    await logoutAction(slug);
-                }}>
-                    <button type="submit" className="text-sm text-red-600 hover:text-red-800 font-medium px-4">
-                        Sign Out
-                    </button>
-                </form>
             </div>
 
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
