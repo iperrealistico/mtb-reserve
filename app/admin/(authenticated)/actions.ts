@@ -5,7 +5,6 @@ import { generateSecureItalianPassword, hashPassword } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { sendEmail, sendTenantOnboardingEmail } from "@/lib/email";
-import { getTenantRouteSlug } from "@/lib/tenants";
 
 // --- Types ---
 interface ActionState {
@@ -14,8 +13,20 @@ interface ActionState {
     newPassword?: string;
 }
 
+type TenantContentSettings = Record<string, unknown> & {
+    content?: Record<string, unknown>;
+};
+
+function getEmailErrorMessage(error: unknown) {
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    return "Unable to send onboarding email";
+}
+
 // --- Create ---
-export async function createTenantAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function createTenantAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const name = formData.get("name") as string;
     const slug = formData.get("slug") as string;
     const contactEmail = formData.get("contactEmail") as string;
@@ -43,7 +54,7 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
     const passwordHash = await hashPassword(password);
 
     try {
-        const tenant = await db.tenant.create({
+        await db.tenant.create({
             data: {
                 slug,
                 publicSlug: slug,
@@ -55,16 +66,23 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
                 adminPasswordHash: passwordHash,
                 timezone: "Europe/Rome",
                 settings: {},
-            } as any
+            }
         });
 
         // Email the password to the tenant
-        await sendTenantOnboardingEmail({
+        const onboardingResult = await sendTenantOnboardingEmail({
             name,
             registrationEmail,
             password,
             routeSlug: slug,
         });
+
+        if (onboardingResult.error) {
+            return {
+                success: false,
+                error: `Tenant created, but onboarding email failed: ${getEmailErrorMessage(onboardingResult.error)}`,
+            };
+        }
     } catch (e) {
         return { success: false, error: "Failed to create tenant. " + e };
     }
@@ -73,7 +91,7 @@ export async function createTenantAction(prevState: any, formData: FormData): Pr
 }
 
 // --- Update Content ---
-export async function updateTenantContentAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function updateTenantContentAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
     const content = {
         bookingTitle: formData.get("bookingTitle") as string,
@@ -85,7 +103,7 @@ export async function updateTenantContentAction(prevState: any, formData: FormDa
     const tenant = await db.tenant.findUnique({ where: { slug } });
     if (!tenant) return { success: false, error: "Tenant not found" };
 
-    const currentSettings = (tenant.settings as any) || {};
+    const currentSettings = (tenant.settings as TenantContentSettings | null) || {};
     const newSettings = {
         ...currentSettings,
         content: {
@@ -104,7 +122,7 @@ export async function updateTenantContentAction(prevState: any, formData: FormDa
 }
 
 // --- Send Email ---
-export async function sendTenantEmailAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function sendTenantEmailAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
     const to = formData.get("to") as string;
     const subject = formData.get("subject") as string;
@@ -121,7 +139,7 @@ export async function sendTenantEmailAction(prevState: any, formData: FormData):
     });
 
     if (result.error) {
-        const errorMsg = (result.error as any).message || "Check Resend dashboard";
+        const errorMsg = result.error instanceof Error ? result.error.message : "Check Resend dashboard";
         return { success: false, error: "Email failed: " + errorMsg };
     }
 
@@ -129,7 +147,7 @@ export async function sendTenantEmailAction(prevState: any, formData: FormData):
 }
 
 // --- Update Details ---
-export async function updateTenantDetailsAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function updateTenantDetailsAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
     const name = formData.get("name") as string;
     const registrationEmail = formData.get("registrationEmail") as string;
@@ -138,7 +156,7 @@ export async function updateTenantDetailsAction(prevState: any, formData: FormDa
 
     await db.tenant.update({
         where: { slug },
-        data: { name, registrationEmail } as any
+        data: { name, registrationEmail }
     });
 
     revalidatePath(`/admin/tenants/${slug}`);
@@ -147,10 +165,16 @@ export async function updateTenantDetailsAction(prevState: any, formData: FormDa
 
 // --- Reset Password (Admin Force) ---
 // --- Reset Password (Admin Force) ---
-export async function resetTenantPasswordAdminAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function resetTenantPasswordAdminAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
 
-    const tenant = await db.tenant.findUnique({ where: { slug } }) as any;
+    const tenant = await db.tenant.findUnique({
+        where: { slug },
+        select: {
+            registrationEmail: true,
+            name: true,
+        },
+    });
     if (!tenant) return { success: false, error: "Tenant not found" };
 
     const newPassword = generateSecureItalianPassword();
@@ -181,7 +205,7 @@ export async function resetTenantPasswordAdminAction(prevState: any, formData: F
 }
 
 // --- Delete ---
-export async function deleteTenantAction(prevState: any, formData: FormData): Promise<ActionState> {
+export async function deleteTenantAction(_prevState: unknown, formData: FormData): Promise<ActionState> {
     const slug = formData.get("slug") as string;
     await db.tenant.delete({ where: { slug } });
     redirect("/admin");

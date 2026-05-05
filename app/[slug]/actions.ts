@@ -36,7 +36,7 @@ export async function getAvailabilityAction(slug: string, date: Date) {
     return { slots: settings, availability: result, timezone };
 }
 
-export async function submitBookingAction(prevState: any, formData: FormData) {
+export async function submitBookingAction(_prevState: unknown, formData: FormData) {
     // 1. Rate Limit
     const headerList = await headers();
     const ip = headerList.get("x-forwarded-for") || "127.0.0.1";
@@ -191,7 +191,25 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
         });
 
         // 3. Send Email
-        await sendConfirmationLink(data.customerEmail, getTenantRouteSlug(tenant), booking.confirmationToken!);
+        const confirmationResult = await sendConfirmationLink(
+            data.customerEmail,
+            getTenantRouteSlug(tenant),
+            booking.confirmationToken!,
+        );
+        if (confirmationResult.error) {
+            await db.booking.delete({ where: { id: booking.id } });
+            await logEvent({
+                level: "ERROR",
+                actorType: "SYSTEM",
+                tenantId: tenant.slug,
+                eventType: "BOOKING_REQUEST_EMAIL_FAILED",
+                message: "Booking confirmation email failed; pending booking rolled back",
+                entityType: "Booking",
+                entityId: booking.id,
+                metadata: { email: data.customerEmail },
+            });
+            return { error: "We could not send the confirmation email. Please try again." };
+        }
 
         await logEvent({
             level: "INFO",
@@ -211,7 +229,7 @@ export async function submitBookingAction(prevState: any, formData: FormData) {
 
         return { success: true, bookingId: booking.id };
 
-    } catch (err: any) {
-        return { error: err.message || "Booking failed" };
+    } catch (err: unknown) {
+        return { error: err instanceof Error ? err.message : "Booking failed" };
     }
 }

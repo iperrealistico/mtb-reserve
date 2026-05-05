@@ -3,10 +3,18 @@
 import { db } from "@/lib/db";
 import { getTenantBySlug } from "@/lib/tenants";
 import { createZonedDate } from "@/lib/time";
-import { ensureAuthenticated } from "@/lib/auth";
+import { ensureAuthenticated, isAuthenticationError } from "@/lib/auth";
 
 export async function getDailyBookingsAction(slug: string, dateString: string) {
-    await ensureAuthenticated(slug);
+    try {
+        await ensureAuthenticated(slug);
+    } catch (error) {
+        if (isAuthenticationError(error)) {
+            return { error: "AUTH_REQUIRED" as const };
+        }
+
+        throw error;
+    }
     // dateString implicitly from URL, e.g. "2024-06-01" or whatever Format day picker uses
     // If empty, use today.
 

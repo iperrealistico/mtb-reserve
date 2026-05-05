@@ -14,6 +14,13 @@ export interface SessionData {
     tokenVersion?: number;
 }
 
+const AUTH_ERROR_MESSAGES = new Set([
+    "Unauthorized: Please log in.",
+    "Session invalid. Please log in again.",
+    "Forbidden: You do not have access to this tenant.",
+    "Unauthorized",
+]);
+
 export const sessionOptions: SessionOptions = {
     password: process.env.SESSION_SECRET || "complex_password_at_least_32_characters_long",
     cookieName: "mtbr_session",
@@ -105,6 +112,10 @@ export async function ensureAuthenticated(slug?: string) {
     }
 
     return session;
+}
+
+export function isAuthenticationError(error: unknown): error is Error {
+    return error instanceof Error && AUTH_ERROR_MESSAGES.has(error.message);
 }
 
 export async function ensureSuperAdmin() {

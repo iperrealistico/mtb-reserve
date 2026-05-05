@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { confirmBookingAction } from '@/app/[slug]/booking/confirm/actions';
 import { db } from '@/lib/db';
+import { sendEmail } from '@/lib/email';
 
 vi.mock('@/lib/db', () => ({
     db: {
@@ -48,8 +49,8 @@ describe('confirmBookingAction', () => {
             customerEmail: 'test@test.com',
             tenant: { contactEmail: 'admin@test.com', name: 'T1' }
         };
-        (db.booking.findUnique as any).mockResolvedValue(booking);
-        (db.bookingItem.aggregate as any).mockResolvedValue({ _sum: { quantity: 0 } });
+        vi.mocked(db.booking.findUnique).mockResolvedValue(booking as never);
+        vi.mocked(db.bookingItem.aggregate).mockResolvedValue({ _sum: { quantity: 0 } } as never);
 
         const formData = new FormData();
         formData.append('token', 'tkn1');
@@ -61,5 +62,60 @@ describe('confirmBookingAction', () => {
         expect(result.success).toBe(false);
         expect(result.error).toContain('expired');
         expect(db.booking.update).not.toHaveBeenCalled();
+    });
+
+    it('should send recap and admin notification emails when the booking is confirmed', async () => {
+        const booking = {
+            id: 'b1',
+            status: 'PENDING_CONFIRM',
+            expiresAt: new Date(Date.now() + 60_000),
+            quantity: 2,
+            totalPrice: 120,
+            tenantSlug: 't1',
+            bikeTypeId: 'bt1',
+            startTime: new Date('2026-05-01T09:00:00.000Z'),
+            endTime: new Date('2026-05-01T11:00:00.000Z'),
+            bikeType: { id: 'bt1', name: 'E-Bike', totalStock: 4, brokenCount: 0 },
+            items: [
+                {
+                    bikeTypeId: 'bt1',
+                    quantity: 2,
+                    bikeType: { id: 'bt1', name: 'E-Bike', totalStock: 4, brokenCount: 0 },
+                },
+            ],
+            customerName: 'Alice Rider',
+            customerEmail: 'alice@example.com',
+            customerPhone: '+39 333 0000000',
+            tenant: {
+                name: 'Trail Hub',
+                contactEmail: 'bookings@trailhub.test',
+                registrationEmail: 'owner@trailhub.test',
+                settings: {},
+            },
+        };
+
+        vi.mocked(db.booking.findUnique).mockResolvedValue(booking as never);
+        vi.mocked(db.bookingItem.aggregate).mockResolvedValue({ _sum: { quantity: 0 } } as never);
+
+        const formData = new FormData();
+        formData.append('token', 'tkn1');
+        formData.append('tos', 'on');
+        formData.append('responsibility', 'on');
+
+        const result = await confirmBookingAction({}, formData);
+
+        expect(result.success).toBe(true);
+        expect(sendEmail).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(sendEmail).mock.calls[0]?.[0]).toMatchObject({
+            to: 'alice@example.com',
+            category: 'recap',
+            entityId: 'b1',
+        });
+        expect(vi.mocked(sendEmail).mock.calls[1]?.[0]).toMatchObject({
+            to: 'owner@trailhub.test',
+            category: 'admin_notification',
+            entityId: 'admin_b1',
+        });
+        expect(db.booking.update).toHaveBeenCalled();
     });
 });

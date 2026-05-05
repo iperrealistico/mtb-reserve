@@ -7,14 +7,33 @@ import { getTenantRouteSlug } from "@/lib/tenants";
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_mock_key");
 
-export const CONTACT_INBOX_EMAIL = process.env.CONTACT_INBOX_EMAIL || "contact@mtbreserve.com";
+export const DEFAULT_CONTACT_EMAIL = "contact@mtbreserve.com";
 export const DEFAULT_FROM_EMAIL = "MTB Reserve <direct@mtbreserve.com>";
-export const MAILBOX_FROM_EMAIL = `MTB Reserve <${CONTACT_INBOX_EMAIL}>`;
 const SHOULD_LOG = process.env.EMAIL_DISABLED === "1" || !process.env.RESEND_API_KEY;
 
 type EmailTag = {
     name: string;
     value: string;
+};
+
+type BookingEmailData = {
+    id: string;
+    tenantSlug?: string | null;
+    bookingCode?: string | null;
+    startTime: Date;
+    quantity: number;
+    customerName: string;
+    customerPhone?: string | null;
+    customerEmail: string;
+    tenant?: {
+        name?: string | null;
+        contactEmail?: string | null;
+        slug?: string | null;
+        publicSlug?: string | null;
+    } | null;
+    bikeType?: {
+        name?: string | null;
+    } | null;
 };
 
 export type SendEmailOptions = {
@@ -210,8 +229,13 @@ export async function sendConfirmationLink(to: string, routeSlug: string, token:
     });
 }
 
-export async function sendBookingRecap(to: string, booking: any) {
-    const routeSlug = booking.tenant ? getTenantRouteSlug(booking.tenant) : booking.tenantSlug;
+export async function sendBookingRecap(to: string, booking: BookingEmailData) {
+    const routeSlug = booking.tenant?.slug
+        ? getTenantRouteSlug({
+            slug: booking.tenant.slug,
+            publicSlug: booking.tenant.publicSlug ?? null,
+        })
+        : booking.tenantSlug;
     const pickupUrl = `${getBaseUrl()}/${routeSlug}`;
 
     const { subject, html, from } = await getTemplateContent(
@@ -248,12 +272,12 @@ export async function sendBookingRecap(to: string, booking: any) {
     });
 }
 
-export async function sendAdminNotification(tenantEmail: string, booking: any) {
+export async function sendAdminNotification(tenantEmail: string, booking: BookingEmailData) {
     const { subject, html, from } = await getTemplateContent(
         "admin_notification",
         {
             customerName: booking.customerName,
-            customerPhone: booking.customerPhone,
+            customerPhone: booking.customerPhone || "",
             customerEmail: booking.customerEmail,
             date: new Date(booking.startTime).toLocaleDateString(),
             time: new Date(booking.startTime).toLocaleTimeString(),
@@ -368,7 +392,7 @@ export async function sendSignupRequestAdminNotification(
     extras?: { publicSlug?: string; loginUrl?: string; password?: string; duplicate?: boolean }
 ) {
     const settings = await getSiteSettings();
-    const adminEmail = settings.adminNotificationEmail || CONTACT_INBOX_EMAIL;
+    const adminEmail = settings.adminNotificationEmail || DEFAULT_CONTACT_EMAIL;
 
     const { subject, html, from } = await getTemplateContent(
         "signup_request_admin",
@@ -410,7 +434,7 @@ export async function sendSignupRequestAdminNotification(
     });
 }
 
-export async function sendBookingStatusChangeEmail(booking: any, status: string) {
+export async function sendBookingStatusChangeEmail(booking: BookingEmailData, status: string) {
     const statusMap: Record<string, string> = {
         CANCELLED: "booking_cancelled",
         NO_SHOW: "booking_no_show",

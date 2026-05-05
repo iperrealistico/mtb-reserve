@@ -14,10 +14,10 @@ SESSION_SECRET="complex_long_string_at_least_32_chars"
 # Base URL (for email links)
 NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 
-# Email Service (Resend)
-RESEND_API_KEY="re_..." 
-FROM_EMAIL="onboarding@resend.dev"
+# Transactional Email Service (Resend outbound)
+RESEND_API_KEY="re_..."
 
+# Inbound email is handled separately via Cloudflare Email Routing / Gmail.
 
 # Dev Flags
 # Set to "1" or "true" to log emails to console instead of sending

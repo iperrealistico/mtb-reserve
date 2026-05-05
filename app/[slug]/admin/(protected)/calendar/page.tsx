@@ -1,5 +1,6 @@
 import { getDailyBookingsAction } from "./actions";
 import BookingCalendarView from "./calendar-view";
+import { redirect } from "next/navigation";
 
 export default async function CalendarPage({
     params,
@@ -20,6 +21,10 @@ export default async function CalendarPage({
     const result = await getDailyBookingsAction(slug, dateStr);
 
     if ("error" in result) {
+        if (result.error === "AUTH_REQUIRED") {
+            redirect(`/${slug}/admin/login`);
+        }
+
         return <div className="p-8 text-red-500">Error: {result.error}</div>;
     }
 
