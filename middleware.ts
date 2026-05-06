@@ -15,6 +15,7 @@ export function middleware(request: NextRequest) {
         font-src 'self';
         frame-src 'self' https://www.google.com https://www.gstatic.com;
         connect-src 'self' https://www.google.com https://www.gstatic.com;
+        worker-src 'self' blob:;
         object-src 'none';
         base-uri 'self';
         form-action 'self';
