@@ -63,9 +63,9 @@ export default function LandingPage() {
     <div className="min-h-screen bg-neutral-900 text-neutral-100 font-sans selection:bg-orange-500 selection:text-white overflow-hidden">
 
       {/* Navbar stub */}
-      <nav className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-10 pointer-events-none">
-        <div className="text-xl font-bold tracking-tighter flex items-center gap-2 text-white pointer-events-auto cursor-default font-outfit">
-          <Bike className="w-6 h-6 text-orange-500" />
+      <nav className="absolute top-0 left-0 w-full p-4 sm:p-6 flex justify-between items-center z-10 pointer-events-none">
+        <div className="text-lg sm:text-xl font-bold tracking-tighter flex items-center gap-2 text-white pointer-events-auto cursor-default font-outfit">
+          <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500" />
           MTB Reserve
         </div>
       </nav>
@@ -73,7 +73,7 @@ export default function LandingPage() {
       <div className="flex flex-col lg:flex-row min-h-screen">
 
         {/* LEFT: RIDER SIDE */}
-        <section className="flex-1 relative flex flex-col justify-center items-center p-8 lg:p-16 border-b lg:border-b-0 lg:border-r border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 transition-colors duration-500 group">
+        <section className="flex-1 relative flex flex-col justify-center items-center p-8 pt-28 lg:p-16 lg:pt-16 border-b lg:border-b-0 lg:border-r border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 transition-colors duration-500 group">
           {/* Background Image Effect */}
           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10 pointer-events-none"></div>
 
@@ -231,10 +231,18 @@ export default function LandingPage() {
 
       </div>
 
+      <Link
+        href="/about"
+        className="sm:hidden mx-auto mt-6 mb-8 flex w-fit items-center gap-2 rounded-full border border-neutral-200 bg-white/95 px-5 py-2.5 text-sm font-medium text-neutral-600 shadow-md transition-all hover:text-neutral-900"
+      >
+        <Info className="w-4 h-4" />
+        What is MTB Reserve?
+      </Link>
+
       {/* Floating Info Badge */}
       <Link
         href="/about"
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-neutral-200 px-5 py-2.5 rounded-full text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:shadow-lg hover:scale-105 transition-all flex items-center gap-2 shadow-md"
+        className="hidden sm:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/95 backdrop-blur-sm border border-neutral-200 px-5 py-2.5 rounded-full text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:shadow-lg hover:scale-105 transition-all items-center gap-2 shadow-md"
       >
         <Info className="w-4 h-4" />
         What is MTB Reserve?
