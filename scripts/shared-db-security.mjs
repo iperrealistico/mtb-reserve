@@ -15,6 +15,9 @@ const TABLES = [
   "EventLog",
   "SystemSettings",
   "SignupRequest",
+  "InboxThread",
+  "InboxMessage",
+  "InboxAttachment",
   "AboutPageContent",
   "BookingItem",
 ];
@@ -53,10 +56,10 @@ const AUDIT_SQL = `
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const migrationPath = path.resolve(
-  __dirname,
-  "../prisma/manual-migrations/20260423_enable_rls_on_shared_public_tables.sql"
-);
+const migrationPaths = [
+  "../prisma/manual-migrations/20260423_enable_rls_on_shared_public_tables.sql",
+  "../prisma/manual-migrations/20260624_enable_rls_on_inbox_tables.sql",
+].map((migrationPath) => path.resolve(__dirname, migrationPath));
 
 function getConnectionString() {
   const raw =
@@ -88,8 +91,10 @@ async function withClient(fn) {
 }
 
 async function applyHardening(client) {
-  const sql = await fs.readFile(migrationPath, "utf8");
-  await client.query(sql);
+  for (const migrationPath of migrationPaths) {
+    const sql = await fs.readFile(migrationPath, "utf8");
+    await client.query(sql);
+  }
 }
 
 async function auditDatabase(client) {
@@ -117,12 +122,14 @@ function restHeadRequest(baseUrl, anonKey, table) {
         },
       },
       (response) => {
-        resolve({
+        const result = {
           table,
           status: response.statusCode,
           contentRange: response.headers["content-range"] || null,
           rowCount: parseContentRangeCount(response.headers["content-range"]),
-        });
+        };
+        response.resume();
+        response.on("end", () => resolve(result));
       }
     );
 
@@ -170,7 +177,7 @@ async function main() {
     JSON.stringify(
       {
         mode: apply ? "apply" : "check",
-        migrationPath,
+        migrationPaths,
         audit,
         rest,
         insecureTables,
